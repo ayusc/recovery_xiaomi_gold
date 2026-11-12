@@ -26,28 +26,9 @@ jobs:
       - name: Cleanup Runner Environment
         uses: rokibhasansagar/slimhub_actions@main
 
-      # Setup notification / logging helper
-      - name: Setup Logger Script
-        run: |
-          cat <<'EOF' > /tmp/send_msg.sh
-          #!/bin/bash
-          MSG="$(printf "$1")"
-          echo "[INFO] $MSG"
-          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] && [ -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
-            curl -s --fail \
-              -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-              -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-              -d text="$MSG" \
-              -d parse_mode="Markdown" \
-              -d disable_web_page_preview=true \
-            > /dev/null 2>&1 || true
-          fi
-          EOF
-          chmod +x /tmp/send_msg.sh
-
       - name: Initialize Workspace
         run: |
-          /tmp/send_msg.sh "🚀 *Starting AERA Recovery build* for \`${{ env.DEVICE_NAME }}\`\n🔗 [View Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          echo "Starting AERA Recovery build for ${{ env.DEVICE_NAME }}"
           git config --global --add safe.directory '*'
           mkdir -p workspace
           cd workspace
@@ -57,7 +38,6 @@ jobs:
       # Prepare Android build dependencies
       - name: Prepare Build Environment
         run: |
-          /tmp/send_msg.sh "🧩 Preparing build environment..."
           curl -fL -O "https://gitlab.com/OrangeFox/misc/scripts/-/raw/master/setup/android_build_env.sh"
           sudo bash android_build_env.sh
         working-directory: ${{ steps.pwd.outputs.workspace-folder }}
@@ -72,7 +52,6 @@ jobs:
       # Initialize and sync AERA Recovery manifest (shallow clone to conserve disk space)
       - name: Sync AERA Sources
         run: |
-          /tmp/send_msg.sh "🌐 Syncing AERA sources..."
           mkdir -p ${{ steps.pwd.outputs.workspace-folder }}/${{ env.MANIFEST_BRANCH }}
           cd ${{ steps.pwd.outputs.workspace-folder }}/${{ env.MANIFEST_BRANCH }}
           git config --global user.name "${{ github.actor }}"
@@ -84,7 +63,6 @@ jobs:
       # Clone current device tree into device/xiaomi/gold
       - name: Clone Device Tree
         run: |
-          /tmp/send_msg.sh "🌲 Setting up device tree for \`${{ env.DEVICE_NAME }}\`..."
           cd ${{ steps.pwd.outputs.workspace-folder }}/${{ env.MANIFEST_BRANCH }}
           mkdir -p ${{ env.DEVICE_PATH }}
           git clone --depth=1 https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git -b ${{ github.ref_name }} ./${{ env.DEVICE_PATH }}
@@ -103,7 +81,6 @@ jobs:
       # Show system resources before compilation
       - name: Show System Resources
         run: |
-          /tmp/send_msg.sh "📊 Checking runner resources..."
           echo "=== CPU Cores ==="
           nproc
           echo
@@ -117,7 +94,6 @@ jobs:
       # Compile AERA Recovery
       - name: Building Recovery
         run: |
-          /tmp/send_msg.sh "⚙️ Starting build for \`${{ env.DEVICE_NAME }}\`..."
           cd ${{ steps.pwd.outputs.workspace-folder }}/${{ env.MANIFEST_BRANCH }}
 
           set +e
@@ -129,10 +105,7 @@ jobs:
 
           lunch twrp_${{ env.DEVICE_NAME }}-bp2a-eng || lunch aera_${{ env.DEVICE_NAME }}-bp2a-eng
 
-          if ! mka adbd ${{ env.BUILD_TARGET }}image -j$(nproc --all); then
-            /tmp/send_msg.sh "❌ Build failed for \`${{ env.DEVICE_NAME }}\`\n🔗 [View Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
-            exit 1
-          fi
+          mka adbd ${{ env.BUILD_TARGET }}image -j$(nproc --all)
 
           # Collect output artifacts
           mkdir -p ${{ github.workspace }}/output
@@ -203,9 +176,3 @@ jobs:
           name: AERA-${{ env.DEVICE_NAME }}-${{ github.run_id }}
           path: ${{ github.workspace }}/output/*
           retention-days: 30
-
-      - name: Notify Release
-        if: success()
-        run: |
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${{ github.run_id }}"
-          /tmp/send_msg.sh "📦 *AERA Recovery Build complete!*\n🔗 [Download Release]($RELEASE_URL)\n🌲 Device: \`${{ env.DEVICE_NAME }}\`\n🌲 Commit: [${{ env.COMMIT_ID }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ env.COMMIT_ID }})"
