@@ -17,6 +17,9 @@ jobs:
       DEVICE_NAME: gold
       BUILD_TARGET: vendorboot
       TZ: UTC
+      CCACHE_DIR: /tmp/ccache
+      CCACHE_EXEC: /usr/bin/ccache
+      USE_CCACHE: 1
 
     steps:
       - name: Checkout Device Tree
@@ -48,6 +51,24 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '11'
+
+      # Restore and cache ccache directory across runs
+      - name: Setup ccache
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ runner.os }}-${{ env.DEVICE_NAME }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-${{ runner.os }}-${{ env.DEVICE_NAME }}-
+
+      - name: Configure ccache
+        run: |
+          mkdir -p ${{ env.CCACHE_DIR }}
+          ccache --set-config=cache_dir=${{ env.CCACHE_DIR }}
+          ccache --set-config=temporary_dir=/tmp/ccache-tmp
+          ccache --set-config=compression=true
+          ccache -M 10G
+          ccache -z
 
       # Initialize and sync AERA Recovery manifest (shallow clone to conserve disk space)
       - name: Sync AERA Sources
@@ -101,6 +122,9 @@ jobs:
           export ALLOW_MISSING_DEPENDENCIES=true
           export LC_ALL="C"
           export AERA_BUILD_DEVICE=${{ env.DEVICE_NAME }}
+          export USE_CCACHE=1
+          export CCACHE_DIR=${{ env.CCACHE_DIR }}
+          export CCACHE_EXEC=/usr/bin/ccache
           set -e
 
           lunch twrp_${{ env.DEVICE_NAME }}-bp2a-eng || lunch aera_${{ env.DEVICE_NAME }}-bp2a-eng
@@ -130,6 +154,11 @@ jobs:
           ls -lh ${{ github.workspace }}/output
         working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
+      # Show ccache statistics after build
+      - name: Show ccache stats
+        run: |
+          ccache -s
+
       # Show system resources post-build
       - name: Show System Resources Post-Build
         run: |
@@ -152,12 +181,12 @@ jobs:
 
             - **Maintainer**: Ayus
             - **Device**: Redmi Note 13 5G
-            - **Codename**: `${{ env.DEVICE_NAME }}`
+            - **Codename**: ${{ env.DEVICE_NAME }}
             - **Architecture**: arm64
-            - **Target Partition**: `vendor_boot`
-            - **Manifest Branch**: `${{ env.MANIFEST_BRANCH }}`
+            - **Target Partition**: vendor_boot
+            - **Manifest Branch**: ${{ env.MANIFEST_BRANCH }}
             - **Features**: Native LVGL UI, Root Manager (KernelSU/SukiSU for Kernel 6.6), Mobile Data, Web PC Control, FBE v2 Decryption, Fastbootd
-            - **Device Tree Branch**: `${{ github.ref_name }}`
+            - **Device Tree Branch**: ${{ github.ref_name }}
             - **Device Tree Commit**: [${{ env.COMMIT_ID }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ env.COMMIT_ID }})
             - **Build Date**: ${{ env.BUILD_DATE }}
 
