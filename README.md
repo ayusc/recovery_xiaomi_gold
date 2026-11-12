@@ -1,6 +1,8 @@
-# PitchBlack Recovery Project Device Tree for Redmi Note 13 5G (gold)
+# AERA Recovery Project Device Tree for Redmi Note 13 5G (gold)
 
 The Redmi Note 13 5G (codenamed `gold`) is a mid-range smartphone from Xiaomi, released in January 2024.
+
+- **Maintainer**: Ayus
 
 ## Device Specifications
 
@@ -14,13 +16,23 @@ The Redmi Note 13 5G (codenamed `gold`) is a mid-range smartphone from Xiaomi, r
 | Battery | 5000 mAh (Li-Po) |
 | Display | 6.67 inches, AMOLED, 120Hz, 1080 x 2400 pixels |
 
+## Enabled Features
+
+- **Native LVGL Touch-first GUI**: Responsive, smooth touch interface.
+- **Integrated Root Manager**: Built-in support for KernelSU, KernelSU Next, and SukiSU.
+- **Mobile Internet Connectivity**: Cellular data, APN, and SIM status directly in recovery.
+- **PC Connection & Web Control**: Browser-based PC control and management over Wi-Fi / ADB.
+- **Hardware Decryption**: Full File-Based Encryption (FBE v2) data decryption via Mitee TrustZone.
+- **Fastbootd Mode**: Built-in fastbootd integration for flashing dynamic logical partitions.
+- **Full Partition Management**: Support for logical partitions (EROFS/EXT4) and user data (F2FS).
+
 ## Build Instructions
 
-### 1. Initialize PBRP Manifest
+### 1. Initialize AERA Manifest
 
 ```bash
-repo init -u https://github.com/PitchBlackRecoveryProject/manifest_pb -b android-12.1
-repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc --all)
+repo init -u https://github.com/AERA-Recovery/android_manifest.git -b aera-16.0 --depth=1
+repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune --force-sync -j$(nproc --all)
 ```
 
 ### 2. Clone Device Tree
@@ -31,12 +43,13 @@ Clone this repository into `device/xiaomi/gold`:
 git clone <url-to-this-repo> device/xiaomi/gold
 ```
 
-### 3. Compile PitchBlack Recovery
+### 3. Compile AERA Recovery
 
 ```bash
+export AERA_BUILD_DEVICE=gold
 source build/envsetup.sh
-lunch pb_gold-eng
-mka pbrp -j$(nproc --all)
+lunch aera_gold-eng
+mka recoveryimage vendorbootimage -j$(nproc --all)
 ```
 
 ## Flashing Instructions

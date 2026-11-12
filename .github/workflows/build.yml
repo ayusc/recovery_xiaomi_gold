@@ -1,4 +1,4 @@
-name: PitchBlack Recovery Build
+name: AERA Recovery Build
 
 on:
   workflow_dispatch:
@@ -48,9 +48,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-pbrp-${{ github.run_id }}
+          key: ccache-${{ runner.os }}-aera-${{ github.run_id }}
           restore-keys: |
-            ccache-${{ runner.os }}-pbrp-
+            ccache-${{ runner.os }}-aera-
 
       # Delete cache completely if requested
       - name: Remove ccache completely
@@ -83,53 +83,55 @@ jobs:
           cd scripts
           sudo bash setup/android_build_env.sh
 
-      # Initialize and sync PBRP source manifest (latest stable)
-      - name: Set-up PBRP Manifest
+      # Initialize and sync AERA Recovery manifest
+      - name: Set-up AERA Manifest
         run: |
-          export MANIFEST_BRANCH=android-12.1
-          mkdir -p ${GITHUB_WORKSPACE}/pbrp
-          cd ${GITHUB_WORKSPACE}/pbrp
+          export MANIFEST_BRANCH=aera-16.0
+          mkdir -p ${GITHUB_WORKSPACE}/aera
+          cd ${GITHUB_WORKSPACE}/aera
           git config --global user.name "${{ github.actor }}"
           git config --global user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-          repo init -u https://github.com/PitchBlackRecoveryProject/manifest_pb.git -b $MANIFEST_BRANCH --depth=1
+          repo init -u https://github.com/AERA-Recovery/android_manifest.git -b $MANIFEST_BRANCH --depth=1
           repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune --force-sync -j$(nproc --all)
 
       # Clone Device Tree (current repo and current branch)
       - name: Clone Device Tree
         run: |
           export DEVICE_PATH=device/xiaomi/gold
-          cd ${GITHUB_WORKSPACE}/pbrp
+          cd ${GITHUB_WORKSPACE}/aera
           git clone ${{ github.server_url }}/${{ github.repository }} -b ${{ github.ref_name }} ./$DEVICE_PATH
           cd $DEVICE_PATH
           echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
-      # Compile PitchBlack Recovery
-      - name: Building PitchBlack Recovery
+      # Compile AERA Recovery
+      - name: Building AERA Recovery
         run: |
           export DEVICE_NAME=gold
-          cd ${GITHUB_WORKSPACE}/pbrp
+          export AERA_BUILD_DEVICE=gold
+          cd ${GITHUB_WORKSPACE}/aera
           set +e
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           export USE_CCACHE=1
           set -e
-          lunch pb_${DEVICE_NAME}-eng
-          mka pbrp vendorbootimage -j$(nproc --all)
+          lunch aera_${DEVICE_NAME}-eng
+          mka recoveryimage vendorbootimage -j$(nproc --all)
 
           # Collect output artifacts
           mkdir -p ${GITHUB_WORKSPACE}/output
-          cd ${GITHUB_WORKSPACE}/pbrp/out/target/product/${DEVICE_NAME}
+          cd ${GITHUB_WORKSPACE}/aera/out/target/product/${DEVICE_NAME}
 
           if [ -f vendor_boot.img ]; then
             cp vendor_boot.img ${GITHUB_WORKSPACE}/output/vendor_boot.img
-            cp vendor_boot.img ${GITHUB_WORKSPACE}/output/PBRP-${DEVICE_NAME}-vendor_boot.img
+            cp vendor_boot.img ${GITHUB_WORKSPACE}/output/AERA-${DEVICE_NAME}-vendor_boot.img
           fi
 
           if [ -f recovery.img ]; then
             cp recovery.img ${GITHUB_WORKSPACE}/output/recovery.img
           fi
 
-          find . -maxdepth 1 -name "PBRP*.zip" -exec cp {} ${GITHUB_WORKSPACE}/output/ \;
+          find . -maxdepth 1 -name "AERA*.zip" -exec cp {} ${GITHUB_WORKSPACE}/output/ \;
+          find . -maxdepth 1 -name "aera*.zip" -exec cp {} ${GITHUB_WORKSPACE}/output/ \;
 
           echo "BUILD_DATE=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_ENV
           echo "=== Collected Output Files ==="
@@ -146,22 +148,24 @@ jobs:
         with:
           files: |
             ${{ github.workspace }}/output/*
-          name: PitchBlack Recovery for Redmi Note 13 5G (gold)
+          name: AERA Recovery for Redmi Note 13 5G (gold)
           tag_name: ${{ github.run_id }}
           body: |
-            ## PitchBlack Recovery Project - Unofficial Build
+            ## AERA Recovery Project - Unofficial Build
 
+            - **Maintainer**: Ayus
             - **Device**: Redmi Note 13 5G
             - **Codename**: `gold`
             - **Architecture**: arm64
             - **Target Partition**: `vendor_boot`
+            - **Features**: Native LVGL UI, Root Manager (KernelSU/SukiSU), Mobile Data, Web PC Control, FBE v2 Decryption, Fastbootd
             - **Branch**: `${{ github.ref_name }}`
             - **Commit**: [${{ env.COMMIT_ID }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ env.COMMIT_ID }})
             - **Build Date**: ${{ env.BUILD_DATE }}
 
             ### Flashing Instructions
             ```bash
-            fastboot flash vendor_boot PBRP-gold-vendor_boot.img
+            fastboot flash vendor_boot AERA-gold-vendor_boot.img
             fastboot reboot recovery
             ```
 
@@ -169,6 +173,6 @@ jobs:
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PBRP-gold-${{ github.run_id }}
+          name: AERA-gold-${{ github.run_id }}
           path: ${{ github.workspace }}/output/*
           retention-days: 30
