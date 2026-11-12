@@ -1,178 +1,211 @@
 name: AERA Recovery Build
 
-on:
+'on':
   workflow_dispatch:
-    inputs:
-      clean_ccache:
-        description: "Delete ccache before build?"
-        required: true
-        type: choice
-        default: "no"
-        options:
-          - "no"
-          - "yes"
 
 jobs:
   build:
-    name: Build Recovery
-    runs-on: ubuntu-22.04
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      CCACHE_DIR: /tmp/ccache
-      CCACHE_EXEC: /usr/bin/ccache
+    name: Build AERA Recovery
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
 
+    env:
+      MANIFEST_URL: https://github.com/AERA-Recovery/android_manifest.git
+      MANIFEST_BRANCH: aera-16.0
+      DEVICE_PATH: device/xiaomi/gold
+      DEVICE_NAME: gold
+      BUILD_TARGET: vendorboot
+      TZ: UTC
+
     steps:
-      - name: Checkout
+      - name: Checkout Device Tree
         uses: actions/checkout@v6
 
-      # Free up disk space on the runner
-      - name: Free Disk Space
+      # Free up disk space using custom cleanup action
+      - name: Cleanup Runner Environment
+        uses: rokibhasansagar/slimhub_actions@main
+
+      # Setup notification / logging helper
+      - name: Setup Logger Script
         run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo docker image prune -a -f || true
-          df -h
+          cat <<'EOF' > /tmp/send_msg.sh
+          #!/bin/bash
+          MSG="$(printf "$1")"
+          echo "[INFO] $MSG"
+          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] && [ -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
+            curl -s --fail \
+              -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+              -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+              -d text="$MSG" \
+              -d parse_mode="Markdown" \
+              -d disable_web_page_preview=true \
+            > /dev/null 2>&1 || true
+          fi
+          EOF
+          chmod +x /tmp/send_msg.sh
 
-      # Install ccache ONLY if not cleaning
-      - name: Install ccache
-        if: github.event.inputs.clean_ccache == 'no'
-        run: sudo apt update && sudo apt install -y ccache
-
-      # Restore cache ONLY if not cleaning
-      - name: Setup ccache
-        if: github.event.inputs.clean_ccache == 'no'
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-aera-${{ github.run_id }}
-          restore-keys: |
-            ccache-${{ runner.os }}-aera-
-
-      # Delete cache completely if requested
-      - name: Remove ccache completely
-        if: github.event.inputs.clean_ccache == 'yes'
+      - name: Initialize Workspace
         run: |
-          sudo rm -rf ${{ env.CCACHE_DIR }}
-          echo "ccache removed successfully"
-
-      # Configure ccache ONLY if not cleaning
-      - name: Configure ccache
-        if: github.event.inputs.clean_ccache == 'no'
-        run: |
-          mkdir -p ${{ env.CCACHE_DIR }}
-          ccache --set-config=cache_dir=${{ env.CCACHE_DIR }}
-          ccache --set-config=temporary_dir=/tmp/ccache-tmp
-          ccache -M 10G
-
-      # Setup Repo tool
-      - name: Setup Repo Tool
-        run: |
-          mkdir -p ~/.bin
-          curl -s https://storage.googleapis.com/git-repo-downloads/repo > ~/.bin/repo
-          chmod a+rx ~/.bin/repo
-          echo "$HOME/.bin" >> $GITHUB_PATH
+          /tmp/send_msg.sh "🚀 *Starting AERA Recovery build* for \`${{ env.DEVICE_NAME }}\`\n🔗 [View Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          git config --global --add safe.directory '*'
+          mkdir -p workspace
+          cd workspace
+          echo "workspace-folder=$(pwd)" >> $GITHUB_OUTPUT
+        id: pwd
 
       # Prepare Android build dependencies
-      - name: Build Environment
+      - name: Prepare Build Environment
         run: |
-          git clone https://github.com/akhilnarang/scripts.git -b master scripts
-          cd scripts
-          sudo bash setup/android_build_env.sh
+          /tmp/send_msg.sh "🧩 Preparing build environment..."
+          curl -fL -O "https://gitlab.com/OrangeFox/misc/scripts/-/raw/master/setup/android_build_env.sh"
+          sudo bash android_build_env.sh
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
-      # Initialize and sync AERA Recovery manifest
-      - name: Set-up AERA Manifest
+      # Install Zulu OpenJDK 11
+      - name: Install OpenJDK
+        uses: actions/setup-java@v6
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+
+      # Initialize and sync AERA Recovery manifest (shallow clone to conserve disk space)
+      - name: Sync AERA Sources
         run: |
-          export MANIFEST_BRANCH=aera-16.0
-          mkdir -p ${GITHUB_WORKSPACE}/aera
-          cd ${GITHUB_WORKSPACE}/aera
+          /tmp/send_msg.sh "🌐 Syncing AERA sources..."
+          mkdir -p ${{ steps.pwd.outputs.workspace-folder }}/${{ env.MANIFEST_BRANCH }}
+          cd ${{ steps.pwd.outputs.workspace-folder }}/${{ env.MANIFEST_BRANCH }}
           git config --global user.name "${{ github.actor }}"
           git config --global user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-          repo init -u https://github.com/AERA-Recovery/android_manifest.git -b $MANIFEST_BRANCH --depth=1
-          repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune --force-sync -j$(nproc --all)
+          repo init --depth=1 -u ${{ env.MANIFEST_URL }} -b ${{ env.MANIFEST_BRANCH }}
+          repo sync -c --force-sync --no-clone-bundle --no-tags -j$(nproc)
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
-      # Clone Device Tree (current repo and current branch)
+      # Clone current device tree into device/xiaomi/gold
       - name: Clone Device Tree
         run: |
-          export DEVICE_PATH=device/xiaomi/gold
-          cd ${GITHUB_WORKSPACE}/aera
-          git clone ${{ github.server_url }}/${{ github.repository }} -b ${{ github.ref_name }} ./$DEVICE_PATH
-          cd $DEVICE_PATH
-          echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
+          /tmp/send_msg.sh "🌲 Setting up device tree for \`${{ env.DEVICE_NAME }}\`..."
+          cd ${{ steps.pwd.outputs.workspace-folder }}/${{ env.MANIFEST_BRANCH }}
+          mkdir -p ${{ env.DEVICE_PATH }}
+          git clone --depth=1 https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git -b ${{ github.ref_name }} ./${{ env.DEVICE_PATH }}
+          cd ./${{ env.DEVICE_PATH }}
+          LATEST_COMMIT=$(git rev-parse --short=7 HEAD)
+          echo "COMMIT_ID=$LATEST_COMMIT" >> $GITHUB_ENV
+          echo "Latest device tree commit: $LATEST_COMMIT"
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+
+      # Set 30 GB Swap to prevent soong_build OOM (exit status 143)
+      - name: Set Swap Space
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 30
+
+      # Show system resources before compilation
+      - name: Show System Resources
+        run: |
+          /tmp/send_msg.sh "📊 Checking runner resources..."
+          echo "=== CPU Cores ==="
+          nproc
+          echo
+          echo "=== Memory & Swap ==="
+          free -h
+          echo
+          echo "=== Disk Space ==="
+          df -h
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
       # Compile AERA Recovery
-      - name: Building AERA Recovery
+      - name: Building Recovery
         run: |
-          export DEVICE_NAME=gold
-          export AERA_BUILD_DEVICE=gold
-          cd ${GITHUB_WORKSPACE}/aera
+          /tmp/send_msg.sh "⚙️ Starting build for \`${{ env.DEVICE_NAME }}\`..."
+          cd ${{ steps.pwd.outputs.workspace-folder }}/${{ env.MANIFEST_BRANCH }}
+
           set +e
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
-          export USE_CCACHE=1
+          export LC_ALL="C"
+          export AERA_BUILD_DEVICE=${{ env.DEVICE_NAME }}
           set -e
-          lunch aera_${DEVICE_NAME}-bp2a-eng || lunch twrp_${DEVICE_NAME}-bp2a-eng
-          mka recoveryimage vendorbootimage -j$(nproc --all)
+
+          lunch twrp_${{ env.DEVICE_NAME }}-bp2a-eng || lunch aera_${{ env.DEVICE_NAME }}-bp2a-eng
+
+          if ! mka adbd ${{ env.BUILD_TARGET }}image -j$(nproc --all); then
+            /tmp/send_msg.sh "❌ Build failed for \`${{ env.DEVICE_NAME }}\`\n🔗 [View Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            exit 1
+          fi
 
           # Collect output artifacts
-          mkdir -p ${GITHUB_WORKSPACE}/output
-          cd ${GITHUB_WORKSPACE}/aera/out/target/product/${DEVICE_NAME}
+          mkdir -p ${{ github.workspace }}/output
+          cd out/target/product/${{ env.DEVICE_NAME }}
 
           if [ -f vendor_boot.img ]; then
-            cp vendor_boot.img ${GITHUB_WORKSPACE}/output/vendor_boot.img
-            cp vendor_boot.img ${GITHUB_WORKSPACE}/output/AERA-${DEVICE_NAME}-vendor_boot.img
+            cp vendor_boot.img ${{ github.workspace }}/output/vendor_boot.img
+            cp vendor_boot.img ${{ github.workspace }}/output/AERA-${{ env.DEVICE_NAME }}-vendor_boot.img
           fi
 
           if [ -f recovery.img ]; then
-            cp recovery.img ${GITHUB_WORKSPACE}/output/recovery.img
+            cp recovery.img ${{ github.workspace }}/output/recovery.img
+            cp recovery.img ${{ github.workspace }}/output/AERA-${{ env.DEVICE_NAME }}-recovery.img
           fi
 
-          find . -maxdepth 1 -name "AERA*.zip" -exec cp {} ${GITHUB_WORKSPACE}/output/ \;
-          find . -maxdepth 1 -name "aera*.zip" -exec cp {} ${GITHUB_WORKSPACE}/output/ \;
+          find . -maxdepth 1 -name "AERA*.zip" -exec cp {} ${{ github.workspace }}/output/ \; 2>/dev/null || true
+          find . -maxdepth 1 -name "aera*.zip" -exec cp {} ${{ github.workspace }}/output/ \; 2>/dev/null || true
+          find . -maxdepth 1 -name "AERA*.img" -exec cp {} ${{ github.workspace }}/output/ \; 2>/dev/null || true
 
           echo "BUILD_DATE=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_ENV
           echo "=== Collected Output Files ==="
-          ls -la ${GITHUB_WORKSPACE}/output
+          ls -lh ${{ github.workspace }}/output
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
-      # Show stats ONLY if ccache used
-      - name: Cache Stats
-        if: github.event.inputs.clean_ccache == 'no'
-        run: ccache -s
+      # Show system resources post-build
+      - name: Show System Resources Post-Build
+        run: |
+          echo "=== Memory & Swap ==="
+          free -h
+          echo
+          echo "=== Disk Space ==="
+          df -h
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
       # Upload build artifacts to GitHub Release
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            ${{ github.workspace }}/output/*
-          name: AERA Recovery for Redmi Note 13 5G (gold)
+          files: ${{ github.workspace }}/output/*
+          name: AERA Recovery for Redmi Note 13 5G (${{ env.DEVICE_NAME }})
           tag_name: ${{ github.run_id }}
           body: |
             ## AERA Recovery Project - Unofficial Build
 
             - **Maintainer**: Ayus
             - **Device**: Redmi Note 13 5G
-            - **Codename**: `gold`
+            - **Codename**: `${{ env.DEVICE_NAME }}`
             - **Architecture**: arm64
             - **Target Partition**: `vendor_boot`
-            - **Features**: Native LVGL UI, Root Manager (KernelSU/SukiSU), Mobile Data, Web PC Control, FBE v2 Decryption, Fastbootd
-            - **Branch**: `${{ github.ref_name }}`
-            - **Commit**: [${{ env.COMMIT_ID }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ env.COMMIT_ID }})
+            - **Manifest Branch**: `${{ env.MANIFEST_BRANCH }}`
+            - **Features**: Native LVGL UI, Root Manager (KernelSU/SukiSU for Kernel 6.6), Mobile Data, Web PC Control, FBE v2 Decryption, Fastbootd
+            - **Device Tree Branch**: `${{ github.ref_name }}`
+            - **Device Tree Commit**: [${{ env.COMMIT_ID }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ env.COMMIT_ID }})
             - **Build Date**: ${{ env.BUILD_DATE }}
 
             ### Flashing Instructions
             ```bash
-            fastboot flash vendor_boot AERA-gold-vendor_boot.img
+            fastboot flash vendor_boot AERA-${{ env.DEVICE_NAME }}-vendor_boot.img
             fastboot reboot recovery
             ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Upload build artifacts for workflow run download
+      # Upload build artifacts to GitHub Actions workflow run
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AERA-gold-${{ github.run_id }}
+          name: AERA-${{ env.DEVICE_NAME }}-${{ github.run_id }}
           path: ${{ github.workspace }}/output/*
           retention-days: 30
+
+      - name: Notify Release
+        if: success()
+        run: |
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${{ github.run_id }}"
+          /tmp/send_msg.sh "📦 *AERA Recovery Build complete!*\n🔗 [Download Release]($RELEASE_URL)\n🌲 Device: \`${{ env.DEVICE_NAME }}\`\n🌲 Commit: [${{ env.COMMIT_ID }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ env.COMMIT_ID }})"
