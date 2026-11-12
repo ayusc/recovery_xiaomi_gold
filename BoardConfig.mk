@@ -143,6 +143,8 @@ BOARD_AVB_ENABLE := true
 
 # TWRP Configurations
 TW_FRAMERATE := 60
+TW_Y_OFFSET := 94
+TW_H_OFFSET := -94
 TW_STATUS_ICONS_ALIGN := center
 TW_THEME := portrait_hdpi
 TW_MAX_BRIGHTNESS := 1023
@@ -201,3 +203,10 @@ BOARD_VENDOR_RAMDISK_FRAGMENT.init_boot.MKBOOTIMG_ARGS := --ramdisk_type platfor
 
 # Version
 TW_DEVICE_VERSION := gold-A15-1
+
+# PBRP Configurations
+MAINTAINER := "ukriu"
+PB_DISABLE_DEFAULT_DM_VERITY := true
+PB_DISABLE_DEFAULT_TREBLE_COMP := true
+PB_DISABLE_DEFAULT_PATCH_AVB2 := true
+
