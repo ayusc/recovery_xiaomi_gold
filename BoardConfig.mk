@@ -202,8 +202,8 @@ BOARD_VENDOR_RAMDISK_FRAGMENT.init_boot.PREBUILT := $(DEVICE_PATH)/ramdisk.init_
 BOARD_VENDOR_RAMDISK_FRAGMENT.init_boot.MKBOOTIMG_ARGS := --ramdisk_type platform
 
 # Maintainer
-MAINTAINER := "Ayus"
-AERA_MAINTAINER := "Ayus"
+MAINTAINER := Ayus
+AERA_MAINTAINER := Ayus
 
 # Version
 TW_DEVICE_VERSION := gold-A15-1

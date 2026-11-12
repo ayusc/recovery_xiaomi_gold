@@ -5,6 +5,6 @@
 #
 
 export LC_ALL="C"
-export MAINTAINER="Ayus"
-export AERA_MAINTAINER="Ayus"
+export MAINTAINER=Ayus
+export AERA_MAINTAINER=Ayus
 export AERA_ENABLE_MOBILE_DATA=1
