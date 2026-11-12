@@ -53,6 +53,30 @@ service load-ts-drv /sbin/sh /system/bin/load-ts-drv.sh
     disabled
     seclabel u:r:recovery:s0
 
+service load-wifi-drv /sbin/sh /system/bin/load-wifi-drv.sh
+    user root
+    group root
+    oneshot
+    disabled
+    seclabel u:r:recovery:s0
+
+service wmt_loader /vendor/bin/wmt_loader
+    user root
+    group root
+    oneshot
+    disabled
+    seclabel u:r:recovery:s0
+
+service wmt_launcher /vendor/bin/wmt_launcher -p /vendor/firmware/ -o 1
+    user root
+    group root
+    disabled
+    seclabel u:r:recovery:s0
+
+on property:vendor.connsys.driver.ready=yes
+    insmod /lib/modules/wmt_chrdev_wifi.ko
+    insmod /lib/modules/wlan_drv_gen4m_6833.ko
+
 #####
 
 on property:crypto.ready=1
@@ -89,5 +113,8 @@ on property:crypto.ready=0
 on boot
     start vendor.health-default
     start load-ts-drv
+    start load-wifi-drv
+    start wmt_loader
+    start wmt_launcher
     setprop sys.usb.config adb
 

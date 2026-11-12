@@ -20,7 +20,7 @@ The Redmi Note 13 5G (codenamed `gold`) is a mid-range smartphone from Xiaomi, r
 
 - **Native LVGL Touch-first GUI**: Responsive, smooth touch interface.
 - **Integrated Root Manager**: Built-in support for KernelSU, KernelSU Next, and SukiSU.
-- **Mobile Internet Connectivity**: Cellular data, APN, and SIM status directly in recovery.
+- **Wi-Fi & Mobile Internet Connectivity**: Full Wi-Fi networking (WLAN), cellular data, APN, and SIM status directly in recovery.
 - **PC Connection & Web Control**: Browser-based PC control and management over Wi-Fi / ADB.
 - **Hardware Decryption**: Full File-Based Encryption (FBE v2) data decryption via Mitee TrustZone.
 - **Fastbootd Mode**: Built-in fastbootd integration for flashing dynamic logical partitions.
