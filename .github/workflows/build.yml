@@ -185,7 +185,7 @@ jobs:
             - **Architecture**: arm64
             - **Target Partition**: vendor_boot
             - **Manifest Branch**: ${{ env.MANIFEST_BRANCH }}
-            - **Features**: Native LVGL UI, Root Manager (KernelSU/SukiSU for Kernel 6.6), Mobile Data, Web PC Control, FBE v2 Decryption, Fastbootd
+            - **Features**: Native LVGL UI, Root Manager (KernelSU/SukiSU for Kernel 6.6), Web PC Control, FBE v2 Decryption, Fastbootd
             - **Device Tree Branch**: ${{ github.ref_name }}
             - **Device Tree Commit**: [${{ env.COMMIT_ID }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ env.COMMIT_ID }})
             - **Build Date**: ${{ env.BUILD_DATE }}
