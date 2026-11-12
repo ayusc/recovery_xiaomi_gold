@@ -9,7 +9,7 @@ PRODUCT_MAKEFILES := \
     $(LOCAL_DIR)/twrp_gold.mk
 
 COMMON_LUNCH_CHOICES := \
-    aera_gold-eng \
-    aera_gold-userdebug \
-    twrp_gold-eng \
-    twrp_gold-userdebug
+    aera_gold-bp2a-eng \
+    aera_gold-bp2a-userdebug \
+    twrp_gold-bp2a-eng \
+    twrp_gold-bp2a-userdebug

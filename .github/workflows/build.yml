@@ -114,7 +114,7 @@ jobs:
           export ALLOW_MISSING_DEPENDENCIES=true
           export USE_CCACHE=1
           set -e
-          lunch aera_${DEVICE_NAME}-eng
+          lunch aera_${DEVICE_NAME}-bp2a-eng || lunch twrp_${DEVICE_NAME}-bp2a-eng
           mka recoveryimage vendorbootimage -j$(nproc --all)
 
           # Collect output artifacts

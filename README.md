@@ -48,7 +48,7 @@ git clone <url-to-this-repo> device/xiaomi/gold
 ```bash
 export AERA_BUILD_DEVICE=gold
 source build/envsetup.sh
-lunch aera_gold-eng
+lunch aera_gold-bp2a-eng
 mka recoveryimage vendorbootimage -j$(nproc --all)
 ```
 
