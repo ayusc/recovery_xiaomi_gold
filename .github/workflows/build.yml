@@ -79,6 +79,12 @@ jobs:
           git config --global user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
           repo init --depth=1 -u ${{ env.MANIFEST_URL }} -b ${{ env.MANIFEST_BRANCH }}
           repo sync -c --force-sync --no-clone-bundle --no-tags -j$(nproc)
+
+          # Ensure aera_secrets is compiled into recovery for Mobile Data and secrets management
+          if [ -f bootable/recovery/Android.mk ] && ! grep -q "LOCAL_SRC_FILES += aera_secrets/aera_secrets.cpp" bootable/recovery/Android.mk; then
+            sed -i '/aera_secrets\/aera_secrets\.cpp/d' bootable/recovery/Android.mk
+            sed -i '/ifeq (\$(OF_ENABLE_WLAN),1)/i LOCAL_SRC_FILES += aera_secrets/aera_secrets.cpp\n' bootable/recovery/Android.mk
+          fi
         working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
       # Clone current device tree into device/xiaomi/gold
@@ -185,7 +191,7 @@ jobs:
             - **Architecture**: arm64
             - **Target Partition**: vendor_boot
             - **Manifest Branch**: ${{ env.MANIFEST_BRANCH }}
-            - **Features**: Native LVGL UI, Root Manager (KernelSU/SukiSU for Kernel 6.6), Web PC Control, FBE v2 Decryption, Fastbootd
+            - **Features**: Native LVGL UI, Root Manager (KernelSU/SukiSU for Kernel 6.6), Mobile Data, Web PC Control, FBE v2 Decryption, Fastbootd
             - **Device Tree Branch**: ${{ github.ref_name }}
             - **Device Tree Commit**: [${{ env.COMMIT_ID }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ env.COMMIT_ID }})
             - **Build Date**: ${{ env.BUILD_DATE }}
