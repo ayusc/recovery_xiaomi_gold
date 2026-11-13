@@ -103,7 +103,7 @@ jobs:
       BUILD_TARGET: ${{ inputs.BUILD_TARGET || 'vendorbootimage' }}
       SWAP_SIZE_GB: ${{ inputs.SWAP_SIZE_GB || '28' }}
       JAVA_VERSION: ${{ inputs.JAVA_VERSION || '11' }}
-      PUBLISH_RELEASE: ${{ inputs.PUBLISH_RELEASE != false }}
+      PUBLISH_RELEASE: ${{ inputs.PUBLISH_RELEASE == false && 'false' || 'true' }}
       RELEASE_NOTE: ${{ inputs.RELEASE_NOTE || '' }}
 
     steps:
@@ -273,8 +273,25 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RELEASE_DIR"
-          find "$PRODUCT_OUT" -maxdepth 1 -type f \( -name '*.zip' -o -name '*.img' \) \
+          codename="${DEVICE_PATH##*/}"
+
+          # Primary images for recovery / vendor_boot
+          if [ -f "$PRODUCT_OUT/vendor_boot.img" ]; then
+            cp -f "$PRODUCT_OUT/vendor_boot.img" "$RELEASE_DIR/vendor_boot.img"
+            cp -f "$PRODUCT_OUT/vendor_boot.img" "$RELEASE_DIR/recovery.img"
+            cp -f "$PRODUCT_OUT/vendor_boot.img" "$RELEASE_DIR/AERA-${codename}-vendor_boot.img"
+          fi
+          if [ -f "$PRODUCT_OUT/recovery.img" ] && [ ! -f "$RELEASE_DIR/recovery.img" ]; then
+            cp -f "$PRODUCT_OUT/recovery.img" "$RELEASE_DIR/recovery.img"
+          fi
+
+          # Copy flashable zips and branded output images
+          find "$PRODUCT_OUT" -maxdepth 1 -type f \( -name 'AERA*.zip' -o -name 'AERA*.img' \) \
             -newer "$BUILD_MARK" -exec cp -t "$RELEASE_DIR" {} +
+
+          # Purge raw intermediate ramdisk
+          rm -f "$RELEASE_DIR/ramdisk.img"
+
           [ -n "$(ls -A "$RELEASE_DIR")" ] || { echo "::error::No build outputs found in $PRODUCT_OUT"; exit 1; }
 
           fmt() { printf '%dh %02dm %02ds' $(($1 / 3600)) $(($1 % 3600 / 60)) $(($1 % 60)); }
@@ -340,7 +357,6 @@ jobs:
             --target "$GITHUB_SHA"
 
       - name: Upload build output
-        if: ${{ env.PUBLISH_RELEASE != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: aera-${{ env.CODENAME }}-${{ github.run_number }}
