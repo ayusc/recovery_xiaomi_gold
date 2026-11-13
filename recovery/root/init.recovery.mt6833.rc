@@ -90,25 +90,21 @@ on property:ro.crypto.state=unsupported
     stop keymint-mitee
     stop vendor.gatekeeper-mitee
     stop tee-supplicant
-    stop miteelog
     
 on property:ro.crypto.state=unencrypted
     stop keymint-mitee
     stop vendor.gatekeeper-mitee
     stop tee-supplicant
-    stop miteelog
 
 on property:twrp.decrypt.done=true
     stop keymint-mitee
     stop vendor.gatekeeper-mitee
     stop tee-supplicant
-    stop miteelog
 
 on property:crypto.ready=0
     stop keymint-mitee
     stop vendor.gatekeeper-mitee
     stop tee-supplicant
-    stop miteelog
 
 on boot
     start vendor.health-default

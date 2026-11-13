@@ -5,12 +5,6 @@ service tee-supplicant /vendor/bin/tee-supplicant
     disabled
     seclabel u:r:recovery:s0
 
-service miteelog /vendor/bin/miteelog
-    user root
-    group root
-    disabled
-    seclabel u:r:recovery:s0
-
 # tee-supplicant
 on fs
     write /proc/bootprof "init tee-supplicant"
@@ -43,5 +37,3 @@ on post-fs-data
     mkdir /data/vendor/thh
     chmod 0755 /data/vendor/thh
     chown system system /data/vendor/thh
-    write /proc/bootprof "init miteelog"
-    start miteelog

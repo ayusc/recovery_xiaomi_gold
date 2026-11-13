@@ -31,9 +31,6 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/virtual_ab_ota/compression.mk)
 # Configure emulated_storage.mk
 $(call inherit-product, $(SRC_TARGET_DIR)/product/emulated_storage.mk)
 
-# Configure launch_with_vendor_ramdisk.mk
-$(call inherit-product, $(SRC_TARGET_DIR)/product/virtual_ab_ota/launch_with_vendor_ramdisk.mk)
-
 # API
 PRODUCT_SHIPPING_API_LEVEL := 31
 PRODUCT_TARGET_VNDK_VERSION := 35
@@ -58,6 +55,7 @@ AB_OTA_PARTITIONS += \
     dtbo \
     gpueb \
     gz \
+    init_boot \
     lk \
     logo \
     mcf_ota \
