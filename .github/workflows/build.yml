@@ -38,6 +38,8 @@ jobs:
     steps:
       - name: Cleanup
         uses: rokibhasansagar/slimhub_actions@main
+        with:
+          retain: "gh"
 
       - name: Initialize workspace
         run: |
@@ -107,7 +109,7 @@ jobs:
           sudo apt-get update
 
           sudo apt-get install -y \
-            git aria2 ccache python3 python-is-python3 bc bison build-essential \
+            gh git aria2 ccache python3 python-is-python3 bc bison build-essential \
             curl flex g++-multilib gcc-multilib gnupg gperf imagemagick \
             lib32ncurses-dev lib32readline-dev lib32z1-dev liblz4-tool \
             libncurses-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils \
@@ -280,6 +282,13 @@ jobs:
           } >> "$GITHUB_ENV"
           cat "$NOTES_FILE" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: aera-${{ env.CODENAME }}-${{ github.run_number }}
+          path: ${{ env.RELEASE_DIR }}/*
+          if-no-files-found: error
+
       - name: Publish release
         if: ${{ env.PUBLISH_RELEASE == 'true' }}
         env:
@@ -287,17 +296,13 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
+          if ! command -v gh &>/dev/null; then
+            sudo apt-get update && sudo apt-get install -y gh
+          fi
           gh release create "$RELEASE_TAG" "$RELEASE_DIR"/* \
             --title "$RELEASE_TITLE" \
             --notes-file "$NOTES_FILE" \
             --target "$GITHUB_SHA"
-
-      - name: Upload build output
-        uses: actions/upload-artifact@v4
-        with:
-          name: aera-${{ env.CODENAME }}-${{ github.run_number }}
-          path: ${{ env.RELEASE_DIR }}/*
-          if-no-files-found: error
 
       - name: Upload build log
         if: ${{ always() }}
