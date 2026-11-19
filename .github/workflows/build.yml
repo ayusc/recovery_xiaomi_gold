@@ -275,22 +275,10 @@ jobs:
           mkdir -p "$RELEASE_DIR"
           codename="${DEVICE_PATH##*/}"
 
-          # Primary images for recovery / vendor_boot
+          # Only vendor_boot.img is kept for release output
           if [ -f "$PRODUCT_OUT/vendor_boot.img" ]; then
             cp -f "$PRODUCT_OUT/vendor_boot.img" "$RELEASE_DIR/vendor_boot.img"
-            cp -f "$PRODUCT_OUT/vendor_boot.img" "$RELEASE_DIR/recovery.img"
-            cp -f "$PRODUCT_OUT/vendor_boot.img" "$RELEASE_DIR/AERA-${codename}-vendor_boot.img"
           fi
-          if [ -f "$PRODUCT_OUT/recovery.img" ] && [ ! -f "$RELEASE_DIR/recovery.img" ]; then
-            cp -f "$PRODUCT_OUT/recovery.img" "$RELEASE_DIR/recovery.img"
-          fi
-
-          # Copy flashable zips and branded output images
-          find "$PRODUCT_OUT" -maxdepth 1 -type f \( -name 'AERA*.zip' -o -name 'AERA*.img' \) \
-            -newer "$BUILD_MARK" -exec cp -t "$RELEASE_DIR" {} +
-
-          # Purge raw intermediate ramdisk
-          rm -f "$RELEASE_DIR/ramdisk.img"
 
           [ -n "$(ls -A "$RELEASE_DIR")" ] || { echo "::error::No build outputs found in $PRODUCT_OUT"; exit 1; }
 
