@@ -63,7 +63,7 @@ on:
         description: "Swap size in GB (0 to disable)"
         required: true
         type: string
-        default: "28"
+        default: "10"
       JAVA_VERSION:
         description: "OpenJDK version (Zulu distribution)"
         required: true
@@ -101,7 +101,7 @@ jobs:
       LUNCH_PRODUCT: ${{ inputs.LUNCH_PRODUCT || 'twrp_gold-bp2a' }}
       BUILD_TYPE: ${{ inputs.BUILD_TYPE || 'eng' }}
       BUILD_TARGET: ${{ inputs.BUILD_TARGET || 'vendorbootimage' }}
-      SWAP_SIZE_GB: ${{ inputs.SWAP_SIZE_GB || '28' }}
+      SWAP_SIZE_GB: ${{ inputs.SWAP_SIZE_GB || '10' }}
       JAVA_VERSION: ${{ inputs.JAVA_VERSION || '11' }}
       PUBLISH_RELEASE: ${{ inputs.PUBLISH_RELEASE == false && 'false' || 'true' }}
       RELEASE_NOTE: ${{ inputs.RELEASE_NOTE || '' }}
@@ -239,8 +239,8 @@ jobs:
       - name: Show system resources before build
         run: bash "$RESOURCES_SH" pre-build
 
-      - name: Setup ccache
-        uses: actions/cache@v4
+      - name: Restore ccache
+        uses: actions/cache/restore@v4
         with:
           path: ~/.ccache
           key: ccache-${{ env.MANIFEST_BRANCH }}-${{ env.LUNCH_PRODUCT }}-${{ github.sha }}
@@ -256,13 +256,15 @@ jobs:
           export ALLOW_MISSING_DEPENDENCIES=true
           export LC_ALL="C"
           export GOMEMLIMIT=8GiB
-          export GOGC=40
+          export GOGC=50
           export MALLOC_ARENA_MAX=2
           export USE_CCACHE=1
           export CCACHE_EXEC=/usr/bin/ccache
           export CCACHE_DIR="$HOME/.ccache"
-          ccache -M 5G
-          ccache -o compression=true
+          export CCACHE_COMPRESS=1
+          export CCACHE_COMPRESSLEVEL=6
+          export CCACHE_SLOPPINESS=time_macros,include_file_mtime,file_macro
+          ccache -M 10G
           ccache -z
           set -e
 
@@ -280,6 +282,13 @@ jobs:
 
           ccache -s
           echo "BUILD_SECONDS=$(( $(date +%s) - t0 ))" >> "$GITHUB_ENV"
+
+      - name: Save ccache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ~/.ccache
+          key: ccache-${{ env.MANIFEST_BRANCH }}-${{ env.LUNCH_PRODUCT }}-${{ github.sha }}
 
       - name: Show system resources after build
         if: always()
