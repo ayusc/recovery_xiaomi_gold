@@ -14,5 +14,7 @@ insmod $moddir/focaltech_tp.ko
 
 # load the goodix touchscreen driver
 insmod $moddir/gt9916r.ko
+insmod $moddir/gt9886.ko
+insmod $moddir/gt9896s.ko
 
 exit 0
