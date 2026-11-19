@@ -239,6 +239,14 @@ jobs:
       - name: Show system resources before build
         run: bash "$RESOURCES_SH" pre-build
 
+      - name: Setup ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ env.MANIFEST_BRANCH }}-${{ env.LUNCH_PRODUCT }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ env.MANIFEST_BRANCH }}-${{ env.LUNCH_PRODUCT }}-
+
       - name: Build AERA Recovery
         run: |
           cd "$SRC_DIR"
@@ -250,6 +258,12 @@ jobs:
           export GOMEMLIMIT=8GiB
           export GOGC=40
           export MALLOC_ARENA_MAX=2
+          export USE_CCACHE=1
+          export CCACHE_EXEC=/usr/bin/ccache
+          export CCACHE_DIR="$HOME/.ccache"
+          ccache -M 5G
+          ccache -o compression=true
+          ccache -z
           set -e
 
           lunch "$LUNCH_COMBO" || { echo "::error::lunch $LUNCH_COMBO failed"; exit 1; }
@@ -260,9 +274,11 @@ jobs:
 
           if ! mka adbd "$BUILD_TARGET" -j"$(nproc --all)" 2>&1 | tee "$BUILD_LOG"; then
             echo "::error::Build failed for $LUNCH_COMBO"
+            ccache -s
             exit 1
           fi
 
+          ccache -s
           echo "BUILD_SECONDS=$(( $(date +%s) - t0 ))" >> "$GITHUB_ENV"
 
       - name: Show system resources after build
