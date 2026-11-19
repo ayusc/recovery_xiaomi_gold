@@ -8,77 +8,6 @@ on:
       - "README.md"
       - ".gitignore"
   workflow_dispatch:
-    inputs:
-      SYNC_URL:
-        description: "AERA manifest repository URL"
-        required: true
-        type: string
-        default: "https://github.com/AERA-Recovery/android_manifest.git"
-      MANIFEST_BRANCH:
-        description: "AERA manifest branch"
-        required: true
-        type: choice
-        default: "aera-16.0"
-        options:
-          - "aera-16.0"
-      DEVICE_TREE_URL:
-        description: "Device tree repository URL"
-        required: true
-        type: string
-        default: "https://github.com/ayusc/recovery_xiaomi_gold"
-      DEVICE_TREE_BRANCH:
-        description: "AERA device tree branch"
-        required: true
-        type: string
-        default: "main"
-      DEVICE_PATH:
-        description: "Device path in the source tree"
-        required: true
-        type: string
-        default: "device/xiaomi/gold"
-      LUNCH_PRODUCT:
-        description: "AERA lunch product"
-        required: true
-        type: string
-        default: "twrp_gold-bp2a"
-      BUILD_TYPE:
-        description: "Build variant"
-        required: true
-        type: choice
-        default: "eng"
-        options:
-          - "eng"
-          - "userdebug"
-          - "user"
-      BUILD_TARGET:
-        description: "Build target (mka adbd <target>)"
-        required: true
-        type: choice
-        default: "vendorbootimage"
-        options:
-          - "vendorbootimage"
-          - "recoveryimage"
-          - "bootimage"
-      SWAP_SIZE_GB:
-        description: "Swap size in GB (0 to disable)"
-        required: true
-        type: string
-        default: "10"
-      JAVA_VERSION:
-        description: "OpenJDK version (Zulu distribution)"
-        required: true
-        type: string
-        default: "11"
-      PUBLISH_RELEASE:
-        description: "Publish a GitHub release (otherwise upload a workflow artifact)"
-        required: true
-        type: boolean
-        default: true
-      RELEASE_NOTE:
-        description: "Extra text for the top of the release notes"
-        required: false
-        type: string
-        default: ""
 
 permissions:
   contents: write
@@ -93,18 +22,18 @@ jobs:
         shell: bash
     env:
       DEBIAN_FRONTEND: noninteractive
-      SYNC_URL: ${{ inputs.SYNC_URL || 'https://github.com/AERA-Recovery/android_manifest.git' }}
-      MANIFEST_BRANCH: ${{ inputs.MANIFEST_BRANCH || 'aera-16.0' }}
-      DEVICE_TREE_URL: ${{ inputs.DEVICE_TREE_URL || 'https://github.com/ayusc/recovery_xiaomi_gold' }}
-      DEVICE_TREE_BRANCH: ${{ inputs.DEVICE_TREE_BRANCH || 'main' }}
-      DEVICE_PATH: ${{ inputs.DEVICE_PATH || 'device/xiaomi/gold' }}
-      LUNCH_PRODUCT: ${{ inputs.LUNCH_PRODUCT || 'twrp_gold-bp2a' }}
-      BUILD_TYPE: ${{ inputs.BUILD_TYPE || 'eng' }}
-      BUILD_TARGET: ${{ inputs.BUILD_TARGET || 'vendorbootimage' }}
-      SWAP_SIZE_GB: ${{ inputs.SWAP_SIZE_GB || '10' }}
-      JAVA_VERSION: ${{ inputs.JAVA_VERSION || '11' }}
-      PUBLISH_RELEASE: ${{ inputs.PUBLISH_RELEASE == false && 'false' || 'true' }}
-      RELEASE_NOTE: ${{ inputs.RELEASE_NOTE || '' }}
+      SYNC_URL: "https://github.com/AERA-Recovery/android_manifest.git"
+      MANIFEST_BRANCH: "aera-16.0"
+      DEVICE_TREE_URL: "https://github.com/ayusc/recovery_xiaomi_gold"
+      DEVICE_TREE_BRANCH: "main"
+      DEVICE_PATH: "device/xiaomi/gold"
+      LUNCH_PRODUCT: "twrp_gold-bp2a"
+      BUILD_TYPE: "eng"
+      BUILD_TARGET: "vendorbootimage"
+      SWAP_SIZE_GB: "24"
+      JAVA_VERSION: "11"
+      PUBLISH_RELEASE: "true"
+      RELEASE_NOTE: ""
 
     steps:
       - name: Cleanup
@@ -113,6 +42,7 @@ jobs:
       - name: Initialize workspace
         run: |
           set -euo pipefail
+          sudo systemctl stop systemd-oomd 2>/dev/null || true
 
           [[ "$SWAP_SIZE_GB" =~ ^[0-9]+$ ]] || { echo "::error::SWAP_SIZE_GB must be a whole number"; exit 1; }
           [[ "$LUNCH_PRODUCT" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "::error::LUNCH_PRODUCT contains invalid characters"; exit 1; }
@@ -239,8 +169,8 @@ jobs:
       - name: Show system resources before build
         run: bash "$RESOURCES_SH" pre-build
 
-      - name: Restore ccache
-        uses: actions/cache/restore@v4
+      - name: Setup ccache
+        uses: actions/cache@v4
         with:
           path: ~/.ccache
           key: ccache-${{ env.MANIFEST_BRANCH }}-${{ env.LUNCH_PRODUCT }}-${{ github.sha }}
@@ -256,7 +186,7 @@ jobs:
           export ALLOW_MISSING_DEPENDENCIES=true
           export LC_ALL="C"
           export GOMEMLIMIT=8GiB
-          export GOGC=50
+          export GOGC=40
           export MALLOC_ARENA_MAX=2
           export USE_CCACHE=1
           export CCACHE_EXEC=/usr/bin/ccache
@@ -264,7 +194,7 @@ jobs:
           export CCACHE_COMPRESS=1
           export CCACHE_COMPRESSLEVEL=6
           export CCACHE_SLOPPINESS=time_macros,include_file_mtime,file_macro
-          ccache -M 10G
+          ccache -M 5G
           ccache -z
           set -e
 
@@ -282,13 +212,6 @@ jobs:
 
           ccache -s
           echo "BUILD_SECONDS=$(( $(date +%s) - t0 ))" >> "$GITHUB_ENV"
-
-      - name: Save ccache
-        uses: actions/cache/save@v4
-        if: always()
-        with:
-          path: ~/.ccache
-          key: ccache-${{ env.MANIFEST_BRANCH }}-${{ env.LUNCH_PRODUCT }}-${{ github.sha }}
 
       - name: Show system resources after build
         if: always()
