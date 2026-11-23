@@ -30,7 +30,7 @@ jobs:
       LUNCH_PRODUCT: "twrp_gold-bp2a"
       BUILD_TYPE: "eng"
       BUILD_TARGET: "vendorbootimage"
-      SWAP_SIZE_GB: "24"
+      SWAP_SIZE_GB: "10"
       JAVA_VERSION: "11"
       PUBLISH_RELEASE: "true"
       RELEASE_NOTE: ""
@@ -45,6 +45,8 @@ jobs:
         run: |
           set -euo pipefail
           sudo systemctl stop systemd-oomd 2>/dev/null || true
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/android 2>/dev/null || true
+          docker system prune -af 2>/dev/null || true
 
           [[ "$SWAP_SIZE_GB" =~ ^[0-9]+$ ]] || { echo "::error::SWAP_SIZE_GB must be a whole number"; exit 1; }
           [[ "$LUNCH_PRODUCT" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "::error::LUNCH_PRODUCT contains invalid characters"; exit 1; }
