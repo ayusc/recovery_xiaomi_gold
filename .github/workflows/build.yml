@@ -158,7 +158,7 @@ jobs:
           fi
           url="${DEVICE_TREE_URL%/}"
           {
-            echo "DT_URL=$url"
+            echo "DT_URL=${url%.git}"
             echo "DT_SHA=$(git -C "$DEVICE_PATH" rev-parse HEAD)"
           } >> "$GITHUB_ENV"
 
@@ -253,31 +253,31 @@ jobs:
           {
             if [ -n "$RELEASE_NOTE" ]; then printf '%s\n\n' "$RELEASE_NOTE"; fi
             cat <<EOF
-## AERA ${AERA_RELEASE_VERSION} for ${codename}
+          ## AERA ${AERA_RELEASE_VERSION} for ${codename}
 
-Unofficial automated build.
+          Unofficial automated build.
 
-### Build details
-| | |
-|---|---|
-| Built | ${built_at} |
-| Build time | $(fmt "$BUILD_SECONDS") |
-| Sync time | $(fmt "$SYNC_SECONDS") |
-| Total workflow time | $(fmt "$total") |
-| Manifest | ${MANIFEST_BRANCH} (\`${MANIFEST_SHA}\`) |
-| Recovery source | \`${RECOVERY_SHA}\` |
-| Lunch | \`${LUNCH_COMBO}\` |
-| Target | \`mka adbd ${BUILD_TARGET}\` |
-| Workflow run | [#${GITHUB_RUN_NUMBER}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) |
+          ### Build details
+          | | |
+          |---|---|
+          | Built | ${built_at} |
+          | Build time | $(fmt "$BUILD_SECONDS") |
+          | Sync time | $(fmt "$SYNC_SECONDS") |
+          | Total workflow time | $(fmt "$total") |
+          | Manifest | ${MANIFEST_BRANCH} (\`${MANIFEST_SHA}\`) |
+          | Recovery source | \`${RECOVERY_SHA}\` |
+          | Lunch | \`${LUNCH_COMBO}\` |
+          | Target | \`mka adbd ${BUILD_TARGET}\` |
+          | Workflow run | [#${GITHUB_RUN_NUMBER}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) |
 
-### Device tree
-[${DT_URL}](${DT_URL}/tree/${DEVICE_TREE_BRANCH}), branch \`${DEVICE_TREE_BRANCH}\`, commit [\`${DT_SHA:0:10}\`](${DT_URL}/commit/${DT_SHA})
+          ### Device tree
+          [${DT_URL}](${DT_URL}/tree/${DEVICE_TREE_BRANCH}), branch \`${DEVICE_TREE_BRANCH}\`, commit [\`${DT_SHA:0:10}\`](${DT_URL}/commit/${DT_SHA})
 
-### Files
-| File | Size | SHA-256 |
-|---|---|---|
-${files}
-EOF
+          ### Files
+          | File | Size | SHA-256 |
+          |---|---|---|
+          ${files}
+          EOF
           } > "$NOTES_FILE"
 
           {
