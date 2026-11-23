@@ -30,7 +30,7 @@ jobs:
       LUNCH_PRODUCT: "twrp_gold-bp2a"
       BUILD_TYPE: "eng"
       BUILD_TARGET: "vendorbootimage"
-      SWAP_SIZE_GB: "10"
+      SWAP_SIZE_GB: "16"
       JAVA_VERSION: "11"
       PUBLISH_RELEASE: "true"
       RELEASE_NOTE: ""
@@ -189,8 +189,8 @@ jobs:
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           export LC_ALL="C"
-          export GOMEMLIMIT=8GiB
-          export GOGC=40
+          export GOMEMLIMIT=10GiB
+          export GOGC=50
           export MALLOC_ARENA_MAX=2
           export USE_CCACHE=1
           export CCACHE_EXEC=/usr/bin/ccache
@@ -208,8 +208,23 @@ jobs:
           touch "$BUILD_MARK"
           t0=$(date +%s)
 
-          if ! mka adbd "$BUILD_TARGET" -j"$(nproc --all)" 2>&1 | tee "$BUILD_LOG"; then
-            echo "::error::Build failed for $LUNCH_COMBO"
+          # Background heartbeat logger to prevent runner silence timeouts during long soong_build
+          (
+            while [ ! -f "$RUNNER_TEMP/build.done" ]; do
+              sleep 60
+              echo "[$(date -u +%T)] Build in progress... $(free -h | awk '/Mem:/ {print "Mem: "$3"/"$2} /Swap:/ {print "Swap: "$3"/"$2}') | Load: $(cut -d' ' -f1-3 /proc/loadavg)"
+            done
+          ) &
+          HEARTBEAT_PID=$!
+
+          BUILD_STATUS=0
+          mka adbd "$BUILD_TARGET" -j"$(nproc --all)" 2>&1 | tee "$BUILD_LOG" || BUILD_STATUS=$?
+
+          touch "$RUNNER_TEMP/build.done"
+          kill "$HEARTBEAT_PID" 2>/dev/null || true
+
+          if [ "$BUILD_STATUS" -ne 0 ]; then
+            echo "::error::Build failed for $LUNCH_COMBO (exit code $BUILD_STATUS)"
             ccache -s
             exit 1
           fi
