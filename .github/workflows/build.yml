@@ -30,7 +30,7 @@ jobs:
       LUNCH_PRODUCT: "twrp_gold-bp2a"
       BUILD_TYPE: "eng"
       BUILD_TARGET: "vendorbootimage"
-      SWAP_SIZE_GB: "28"
+      SWAP_SIZE_GB: "24"
       JAVA_VERSION: "11"
       PUBLISH_RELEASE: "true"
       RELEASE_NOTE: ""
@@ -45,10 +45,6 @@ jobs:
         run: |
           set -euo pipefail
           sudo systemctl stop systemd-oomd 2>/dev/null || true
-          sudo systemctl disable --now systemd-oomd 2>/dev/null || true
-          sudo systemctl mask systemd-oomd 2>/dev/null || true
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/android /usr/share/swift /usr/local/graalvm 2>/dev/null || true
-          docker system prune -af 2>/dev/null || true
 
           [[ "$SWAP_SIZE_GB" =~ ^[0-9]+$ ]] || { echo "::error::SWAP_SIZE_GB must be a whole number"; exit 1; }
           [[ "$LUNCH_PRODUCT" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "::error::LUNCH_PRODUCT contains invalid characters"; exit 1; }
@@ -162,19 +158,13 @@ jobs:
           fi
           url="${DEVICE_TREE_URL%/}"
           {
-            echo "DT_URL=${url%.git}"
+            echo "DT_URL=$url"
             echo "DT_SHA=$(git -C "$DEVICE_PATH" rev-parse HEAD)"
           } >> "$GITHUB_ENV"
 
-          STRIP_TOOL=""
           if command -v aarch64-linux-gnu-strip &>/dev/null; then
-            STRIP_TOOL="aarch64-linux-gnu-strip"
-          elif command -v llvm-strip &>/dev/null; then
-            STRIP_TOOL="llvm-strip"
-          fi
-          if [ -n "$STRIP_TOOL" ]; then
-            echo "Stripping debug symbols from kernel modules using $STRIP_TOOL..."
-            "$STRIP_TOOL" --strip-debug "$DEVICE_PATH"/recovery/root/lib/modules/*.ko 2>/dev/null || true
+            echo "Stripping debug symbols from kernel modules..."
+            aarch64-linux-gnu-strip --strip-debug "$DEVICE_PATH"/recovery/root/lib/modules/*.ko 2>/dev/null || true
           fi
 
       - name: Set Swap Space
@@ -202,8 +192,8 @@ jobs:
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           export LC_ALL="C"
-          export GOMEMLIMIT=7GiB
-          export GOGC=30
+          export GOMEMLIMIT=8GiB
+          export GOGC=40
           export MALLOC_ARENA_MAX=2
           export USE_CCACHE=1
           export CCACHE_EXEC=/usr/bin/ccache
@@ -221,23 +211,8 @@ jobs:
           touch "$BUILD_MARK"
           t0=$(date +%s)
 
-          # Background heartbeat logger to prevent runner silence timeouts during long soong_build
-          (
-            while [ ! -f "$RUNNER_TEMP/build.done" ]; do
-              sleep 60
-              echo "[$(date -u +%T)] Build in progress... $(free -h | awk '/Mem:/ {print "Mem: "$3"/"$2} /Swap:/ {print "Swap: "$3"/"$2}') | Load: $(cut -d' ' -f1-3 /proc/loadavg)"
-            done
-          ) &
-          HEARTBEAT_PID=$!
-
-          BUILD_STATUS=0
-          mka adbd "$BUILD_TARGET" -j"$(nproc --all)" 2>&1 | tee "$BUILD_LOG" || BUILD_STATUS=$?
-
-          touch "$RUNNER_TEMP/build.done"
-          kill "$HEARTBEAT_PID" 2>/dev/null || true
-
-          if [ "$BUILD_STATUS" -ne 0 ]; then
-            echo "::error::Build failed for $LUNCH_COMBO (exit code $BUILD_STATUS)"
+          if ! mka adbd "$BUILD_TARGET" -j"$(nproc --all)" 2>&1 | tee "$BUILD_LOG"; then
+            echo "::error::Build failed for $LUNCH_COMBO"
             ccache -s
             exit 1
           fi
@@ -278,31 +253,31 @@ jobs:
           {
             if [ -n "$RELEASE_NOTE" ]; then printf '%s\n\n' "$RELEASE_NOTE"; fi
             cat <<EOF
-          ## AERA ${AERA_RELEASE_VERSION} for ${codename}
+## AERA ${AERA_RELEASE_VERSION} for ${codename}
 
-          Unofficial automated build.
+Unofficial automated build.
 
-          ### Build details
-          | | |
-          |---|---|
-          | Built | ${built_at} |
-          | Build time | $(fmt "$BUILD_SECONDS") |
-          | Sync time | $(fmt "$SYNC_SECONDS") |
-          | Total workflow time | $(fmt "$total") |
-          | Manifest | ${MANIFEST_BRANCH} (\`${MANIFEST_SHA}\`) |
-          | Recovery source | \`${RECOVERY_SHA}\` |
-          | Lunch | \`${LUNCH_COMBO}\` |
-          | Target | \`mka adbd ${BUILD_TARGET}\` |
-          | Workflow run | [#${GITHUB_RUN_NUMBER}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) |
+### Build details
+| | |
+|---|---|
+| Built | ${built_at} |
+| Build time | $(fmt "$BUILD_SECONDS") |
+| Sync time | $(fmt "$SYNC_SECONDS") |
+| Total workflow time | $(fmt "$total") |
+| Manifest | ${MANIFEST_BRANCH} (\`${MANIFEST_SHA}\`) |
+| Recovery source | \`${RECOVERY_SHA}\` |
+| Lunch | \`${LUNCH_COMBO}\` |
+| Target | \`mka adbd ${BUILD_TARGET}\` |
+| Workflow run | [#${GITHUB_RUN_NUMBER}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) |
 
-          ### Device tree
-          [${DT_URL}](${DT_URL}/tree/${DEVICE_TREE_BRANCH}), branch \`${DEVICE_TREE_BRANCH}\`, commit [\`${DT_SHA:0:10}\`](${DT_URL}/commit/${DT_SHA})
+### Device tree
+[${DT_URL}](${DT_URL}/tree/${DEVICE_TREE_BRANCH}), branch \`${DEVICE_TREE_BRANCH}\`, commit [\`${DT_SHA:0:10}\`](${DT_URL}/commit/${DT_SHA})
 
-          ### Files
-          | File | Size | SHA-256 |
-          |---|---|---|
-          ${files}
-          EOF
+### Files
+| File | Size | SHA-256 |
+|---|---|---|
+${files}
+EOF
           } > "$NOTES_FILE"
 
           {
