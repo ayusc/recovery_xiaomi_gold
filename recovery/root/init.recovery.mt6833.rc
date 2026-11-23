@@ -2,14 +2,18 @@ import /init.mitee.rc
 import /init.vibrator.rc
 import /init.hals.rc
 
-# Set SELinux to Permissive
+# Set SELinux to Permissive & initialize USB
 on early-init
     write /sys/fs/selinux/enforce 0
+    write /sys/module/musb_hdrc/parameters/kernel_init_done 1
+    symlink /system/bin /sbin
 
 on init
     setprop sys.usb.configfs 1
     setprop sys.usb.controller "musb-hdrc"
+    setprop vendor.usb.controller "musb-hdrc"
     setprop sys.usb.ffs.aio_compat 1
+    write /sys/module/musb_hdrc/parameters/kernel_init_done 1
     export LD_LIBRARY_PATH /system/lib64:/vendor/lib64:/vendor/lib64/hw
     setprop crypto.ready 1
 
@@ -62,14 +66,14 @@ service vendor.gatekeeper-mitee /vendor/bin/hw/android.hardware.gatekeeper-servi
     disabled
     seclabel u:r:recovery:s0
 
-service load-ts-drv /sbin/sh /system/bin/load-ts-drv.sh
+service load-ts-drv /system/bin/sh /system/bin/load-ts-drv.sh
     user root
     group root
     oneshot
     disabled
     seclabel u:r:recovery:s0
 
-service load-wifi-drv /sbin/sh /system/bin/load-wifi-drv.sh
+service load-wifi-drv /system/bin/sh /system/bin/load-wifi-drv.sh
     user root
     group root
     oneshot
@@ -88,6 +92,10 @@ service wmt_launcher /vendor/bin/wmt_launcher -p /vendor/firmware/ -o 1
     group root
     disabled
     seclabel u:r:recovery:s0
+
+on property:vendor.wmt.driver.loaded=1
+    start wmt_loader
+    start wmt_launcher
 
 on property:vendor.connsys.driver.ready=yes
     insmod /lib/modules/wmt_chrdev_wifi.ko
@@ -126,7 +134,5 @@ on boot
     start vendor.health-default
     start load-ts-drv
     start load-wifi-drv
-    start wmt_loader
-    start wmt_launcher
+    setprop sys.usb.config none
     setprop sys.usb.config adb
-

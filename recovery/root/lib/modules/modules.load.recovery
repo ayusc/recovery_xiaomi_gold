@@ -177,3 +177,10 @@ hqsys_pcba.ko
 hqsys_misc.ko
 gf_spi_tee.ko
 fpc1022_tee.ko
+xiaomi_touch.ko
+hq_notifier.ko
+mt6359p-accdet.ko
+focaltech_tp.ko
+gt9916r.ko
+gt9886.ko
+gt9896s.ko

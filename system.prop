@@ -1,3 +1,17 @@
 ro.vendor.mtk_tee_gp_support=1
 ro.vendor.mtk_mitee_support=1
 ro.vendor.mtk_microtrust_tee_support=1
+
+# USB & ADB
+ro.adb.secure=0
+ro.debuggable=1
+persist.sys.usb.config=adb
+sys.usb.controller=musb-hdrc
+vendor.usb.controller=musb-hdrc
+
+# Display / Touch
+ro.vendor.touchfeature.type=2
+ro.vendor.idle_fps=60
+ro.vendor.display.aod_monitor_default_fps=60
+ro.vendor.display.is_standard_mode=true
+ro.hardware.wlan.dbs=0
