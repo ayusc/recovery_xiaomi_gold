@@ -2,17 +2,15 @@ import /init.mitee.rc
 import /init.vibrator.rc
 import /init.hals.rc
 
-# Set SELinux to Permissive & initialize USB
+# Set SELinux to Permissive
 on early-init
     write /sys/fs/selinux/enforce 0
-    write /sys/module/musb_hdrc/parameters/kernel_init_done 1
 
 on init
     setprop sys.usb.configfs 1
     setprop sys.usb.controller musb-hdrc
     setprop vendor.usb.controller musb-hdrc
     setprop sys.usb.ffs.aio_compat 1
-    write /sys/module/musb_hdrc/parameters/kernel_init_done 1
     export LD_LIBRARY_PATH /system/lib64:/vendor/lib64:/vendor/lib64/hw
     setprop crypto.ready 1
 
@@ -139,5 +137,6 @@ on boot
     start vendor.health-default
     start load-ts-drv
     start load-wifi-drv
-    setprop sys.usb.config none
+    start wmt_loader
+    start wmt_launcher
     setprop sys.usb.config adb
