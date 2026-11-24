@@ -130,6 +130,12 @@ on property:crypto.ready=0
     stop tee-supplicant
 
 on boot
+    chmod 0666 /sys/devices/platform/11e01000.i2c/i2c-5/5-0034/mt6360-led.3.auto/leds/mt6360_flash_ch1/brightness
+    chown system system /sys/devices/platform/11e01000.i2c/i2c-5/5-0034/mt6360-led.3.auto/leds/mt6360_flash_ch1/brightness
+    chmod 0666 /sys/class/leds/mt6360_flash_ch1/brightness
+    chown system system /sys/class/leds/mt6360_flash_ch1/brightness
+    chmod 0666 /dev/flashlight
+    chown system camera /dev/flashlight
     start vendor.health-default
     start load-ts-drv
     start load-wifi-drv

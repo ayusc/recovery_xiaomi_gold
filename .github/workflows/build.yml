@@ -27,10 +27,10 @@ jobs:
       DEVICE_TREE_URL: "https://github.com/ayusc/recovery_xiaomi_gold"
       DEVICE_TREE_BRANCH: "main"
       DEVICE_PATH: "device/xiaomi/gold"
-      LUNCH_PRODUCT: "twrp_gold-bp2a"
+      LUNCH_PRODUCT: "aera_gold-bp2a"
       BUILD_TYPE: "eng"
       BUILD_TARGET: "vendorbootimage"
-      SWAP_SIZE_GB: "26"
+      SWAP_SIZE_GB: "20"
       JAVA_VERSION: "11"
       PUBLISH_RELEASE: "true"
       RELEASE_NOTE: ""
@@ -47,8 +47,9 @@ jobs:
           sudo systemctl stop systemd-oomd 2>/dev/null || true
           sudo systemctl disable --now systemd-oomd 2>/dev/null || true
           sudo systemctl mask systemd-oomd 2>/dev/null || true
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/android /usr/share/swift /usr/local/graalvm /usr/lib/jvm/temurin-* 2>/dev/null || true
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/android /usr/share/swift /usr/local/graalvm /usr/lib/jvm/temurin-* /opt/hostedtoolcache /usr/local/share/powershell /usr/local/lib/node_modules /var/lib/docker 2>/dev/null || true
           docker system prune -af 2>/dev/null || true
+          sudo apt-get clean 2>/dev/null || true
 
           [[ "$SWAP_SIZE_GB" =~ ^[0-9]+$ ]] || { echo "::error::SWAP_SIZE_GB must be a whole number"; exit 1; }
           [[ "$LUNCH_PRODUCT" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "::error::LUNCH_PRODUCT contains invalid characters"; exit 1; }
@@ -187,6 +188,7 @@ jobs:
           key: ccache-${{ env.MANIFEST_BRANCH }}-${{ env.LUNCH_PRODUCT }}-${{ github.sha }}
           restore-keys: |
             ccache-${{ env.MANIFEST_BRANCH }}-${{ env.LUNCH_PRODUCT }}-
+            ccache-${{ env.MANIFEST_BRANCH }}-twrp_gold-bp2a-
 
       - name: Build AERA Recovery
         run: |
@@ -205,7 +207,7 @@ jobs:
           export CCACHE_COMPRESS=1
           export CCACHE_COMPRESSLEVEL=3
           export CCACHE_SLOPPINESS=time_macros,include_file_mtime,file_macro
-          ccache -M 5G
+          ccache -M 4G
           ccache -z
           set -e
 
