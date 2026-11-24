@@ -2,20 +2,19 @@
 set +e
 
 moddir=/lib/modules
+deps=(mt6359p-accdet.ko xiaomi_touch.ko hq_notifier.ko)
 
-# Core dependencies
-insmod $moddir/miev.ko
-insmod $moddir/xiaomi_touch.ko
-insmod $moddir/hqsys_pcba.ko
-insmod $moddir/hqsysfs.ko
-insmod $moddir/hq_notifier.ko
-insmod $moddir/mt6359p-accdet.ko
+# load dependencies
+for dep in "${deps[@]}"; do
+  insmod $moddir/$dep
+done
 
-# Focaltech touchscreen driver
+# load the focaltech touchscreen driver
 insmod $moddir/focaltech_tp.ko
 
-# Goodix touchscreen drivers
+# load the goodix touchscreen driver
 insmod $moddir/gt9916r.ko
+insmod $moddir/gt9886.ko
 insmod $moddir/gt9896s.ko
 
 exit 0

@@ -49,6 +49,7 @@ on post-fs
     symlink /dev/block/mapper/pl_b /dev/block/by-name/preloader_raw_b
 
     start vendor.boot-default
+    start adbd
 
 # Services
 service keymint-mitee /vendor/bin/hw/android.hardware.security.keymint@3.0-service.mitee
@@ -139,4 +140,6 @@ on boot
     start load-wifi-drv
     start wmt_loader
     start wmt_launcher
+    start adbd
+    setprop sys.usb.config none
     setprop sys.usb.config adb
