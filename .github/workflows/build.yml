@@ -30,7 +30,7 @@ jobs:
       LUNCH_PRODUCT: "aera_gold-bp2a"
       BUILD_TYPE: "eng"
       BUILD_TARGET: "vendorbootimage"
-      SWAP_SIZE_GB: "22"
+      SWAP_SIZE_GB: "26"
       JAVA_VERSION: "11"
       PUBLISH_RELEASE: "true"
       RELEASE_NOTE: ""
@@ -194,12 +194,27 @@ jobs:
         run: |
           cd "$SRC_DIR"
 
+          # Protect GitHub runner agent from OOM and CPU/memory starvation
+          for pid in $(pgrep -f 'Runner\.(Worker|Listener)' || true); do
+            echo -900 | sudo tee "/proc/$pid/oom_score_adj" >/dev/null 2>&1 || true
+            sudo renice -n -10 -p "$pid" >/dev/null 2>&1 || true
+          done
+
+          # Enable compressed zram swap (priority 100) ahead of disk swapfile
+          if sudo modprobe zram 2>/dev/null && [ -b /dev/zram0 ]; then
+            echo lz4 | sudo tee /sys/block/zram0/comp_algorithm >/dev/null 2>&1 || true
+            echo 6G | sudo tee /sys/block/zram0/disksize >/dev/null 2>&1 || true
+            sudo mkswap /dev/zram0 >/dev/null 2>&1 && sudo swapon -p 100 /dev/zram0 >/dev/null 2>&1 || true
+          fi
+          sudo sysctl -w vm.vfs_cache_pressure=200 >/dev/null 2>&1 || true
+          sync && echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null 2>&1 || true
+
           set +e
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           export LC_ALL="C"
-          export GOMEMLIMIT=6GiB
-          export GOGC=30
+          export GOMEMLIMIT=14GiB
+          export GOGC=50
           export MALLOC_ARENA_MAX=2
           export USE_CCACHE=1
           export CCACHE_EXEC=/usr/bin/ccache
