@@ -228,9 +228,10 @@ jobs:
 
           CORES=$(nproc --all)
           JOBS=$(( CORES > 2 ? CORES - 1 : CORES ))
+          renice -n 10 -p $$ >/dev/null 2>&1 || true
 
           BUILD_STATUS=0
-          nice -n 10 ionice -c 2 -n 7 mka adbd "$BUILD_TARGET" -j"$JOBS" 2>&1 | tee "$BUILD_LOG" || BUILD_STATUS=$?
+          mka adbd "$BUILD_TARGET" -j"$JOBS" 2>&1 | tee "$BUILD_LOG" || BUILD_STATUS=$?
 
           touch "$RUNNER_TEMP/build.done"
           kill "$HEARTBEAT_PID" 2>/dev/null || true
