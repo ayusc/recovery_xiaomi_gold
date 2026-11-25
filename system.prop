@@ -4,8 +4,6 @@ ro.vendor.mtk_microtrust_tee_support=1
 
 # USB & ADB
 ro.adb.secure=0
-ro.debuggable=1
-persist.sys.usb.config=adb
 sys.usb.controller=musb-hdrc
 vendor.usb.controller=musb-hdrc
 
