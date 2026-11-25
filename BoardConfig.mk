@@ -164,7 +164,7 @@ TW_THEME := portrait_hdpi
 TW_MAX_BRIGHTNESS := 2047
 TW_DEFAULT_BRIGHTNESS := 1023
 TW_BRIGHTNESS_PATH := /sys/class/leds/lcd-backlight/brightness
-TW_FLASHLIGHT_PATH := "/sys/class/leds/mt6360_flash_ch1"
+TW_FLASHLIGHT_PATH := /sys/class/leds/mt6360_flash_ch1
 TW_MAX_FLASHLIGHT_BRIGHTNESS := 200
 TW_NO_SCREEN_BLANK := true
 TW_NO_SCREEN_TIMEOUT := true
@@ -252,8 +252,8 @@ AERA_STATUS_INDENT_RIGHT := 60
 # Flashlight
 AERA_FLASHLIGHT_ENABLE := 1
 OF_FLASHLIGHT_ENABLE := 1
-AERA_FL_PATH1 := "/sys/class/leds/mt6360_flash_ch1"
-OF_FL_PATH1 := "/sys/class/leds/mt6360_flash_ch1"
+AERA_FL_PATH1 := /sys/class/leds/mt6360_flash_ch1
+OF_FL_PATH1 := /sys/class/leds/mt6360_flash_ch1
 
 # Wi-Fi
 OF_ENABLE_WLAN := 1
