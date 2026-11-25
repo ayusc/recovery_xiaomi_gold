@@ -30,7 +30,7 @@ jobs:
       LUNCH_PRODUCT: "aera_gold-bp2a"
       BUILD_TYPE: "eng"
       BUILD_TARGET: "vendorbootimage"
-      SWAP_SIZE_GB: "20"
+      SWAP_SIZE_GB: "22"
       JAVA_VERSION: "11"
       PUBLISH_RELEASE: "true"
       RELEASE_NOTE: ""
@@ -198,8 +198,8 @@ jobs:
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           export LC_ALL="C"
-          export GOMEMLIMIT=8GiB
-          export GOGC=40
+          export GOMEMLIMIT=6GiB
+          export GOGC=30
           export MALLOC_ARENA_MAX=2
           export USE_CCACHE=1
           export CCACHE_EXEC=/usr/bin/ccache
@@ -226,8 +226,11 @@ jobs:
           ) &
           HEARTBEAT_PID=$!
 
+          CORES=$(nproc --all)
+          JOBS=$(( CORES > 2 ? CORES - 1 : CORES ))
+
           BUILD_STATUS=0
-          mka adbd "$BUILD_TARGET" -j"$(nproc --all)" 2>&1 | tee "$BUILD_LOG" || BUILD_STATUS=$?
+          nice -n 10 ionice -c 2 -n 7 mka adbd "$BUILD_TARGET" -j"$JOBS" 2>&1 | tee "$BUILD_LOG" || BUILD_STATUS=$?
 
           touch "$RUNNER_TEMP/build.done"
           kill "$HEARTBEAT_PID" 2>/dev/null || true
