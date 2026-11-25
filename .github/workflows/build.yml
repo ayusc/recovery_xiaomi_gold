@@ -194,16 +194,17 @@ jobs:
         run: |
           cd "$SRC_DIR"
 
-          # Protect GitHub runner agent from OOM and CPU/memory starvation
+          # Protect GitHub runner agent from OOM and CPU/IO/memory starvation
           for pid in $(pgrep -f 'Runner\.(Worker|Listener)' || true); do
             echo -900 | sudo tee "/proc/$pid/oom_score_adj" >/dev/null 2>&1 || true
             sudo renice -n -10 -p "$pid" >/dev/null 2>&1 || true
+            sudo ionice -c 2 -n 0 -p "$pid" >/dev/null 2>&1 || true
           done
 
           # Enable compressed zram swap (priority 100) ahead of disk swapfile
           if sudo modprobe zram 2>/dev/null && [ -b /dev/zram0 ]; then
             echo lz4 | sudo tee /sys/block/zram0/comp_algorithm >/dev/null 2>&1 || true
-            echo 6G | sudo tee /sys/block/zram0/disksize >/dev/null 2>&1 || true
+            echo 4G | sudo tee /sys/block/zram0/disksize >/dev/null 2>&1 || true
             sudo mkswap /dev/zram0 >/dev/null 2>&1 && sudo swapon -p 100 /dev/zram0 >/dev/null 2>&1 || true
           fi
           sudo sysctl -w vm.vfs_cache_pressure=200 >/dev/null 2>&1 || true
@@ -213,7 +214,7 @@ jobs:
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           export LC_ALL="C"
-          export GOMEMLIMIT=14GiB
+          export GOMEMLIMIT=12GiB
           export GOGC=50
           export MALLOC_ARENA_MAX=2
           export USE_CCACHE=1
@@ -242,11 +243,21 @@ jobs:
           HEARTBEAT_PID=$!
 
           CORES=$(nproc --all)
-          JOBS=$(( CORES > 2 ? CORES - 1 : CORES ))
+          export JOBS=$(( CORES > 2 ? CORES - 1 : CORES ))
           renice -n 10 -p $$ >/dev/null 2>&1 || true
+          ionice -c 2 -n 7 -p $$ >/dev/null 2>&1 || true
 
           BUILD_STATUS=0
-          mka adbd "$BUILD_TARGET" -j"$JOBS" 2>&1 | tee "$BUILD_LOG" || BUILD_STATUS=$?
+          if sudo -E systemd-run --quiet --scope --uid="$(id -u)" --gid="$(id -g)" \
+               -p MemoryHigh=11500M -p MemoryMax=12500M -p MemorySwapMax=infinity true 2>/dev/null; then
+            echo "Running build inside 11.5G/12.5G systemd memory cgroup to keep runner responsive"
+            sudo -E systemd-run --quiet --scope --uid="$(id -u)" --gid="$(id -g)" \
+              -p MemoryHigh=11500M -p MemoryMax=12500M -p MemorySwapMax=infinity \
+              bash -c 'set +e; source build/envsetup.sh >/dev/null; lunch "$LUNCH_COMBO" >/dev/null || exit 1; mka adbd "$BUILD_TARGET" -j"$JOBS"' \
+              2>&1 | tee "$BUILD_LOG" || BUILD_STATUS=$?
+          else
+            mka adbd "$BUILD_TARGET" -j"$JOBS" 2>&1 | tee "$BUILD_LOG" || BUILD_STATUS=$?
+          fi
 
           touch "$RUNNER_TEMP/build.done"
           kill "$HEARTBEAT_PID" 2>/dev/null || true
