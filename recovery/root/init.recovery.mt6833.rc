@@ -116,10 +116,14 @@ on property:vendor.wmt.driver.loaded=1
 on property:vendor.connsys.driver.ready=yes
     insmod /lib/modules/wmt_chrdev_wifi.ko
     insmod /lib/modules/wlan_drv_gen4m_6833.ko
+    write /dev/wmtWifi "1"
 
 on property:sys.aera.wlan.up=1
+    write /dev/wmtWifi "1"
     mkdir /tmp/recovery 0777 root root
     mkdir /tmp/recovery/sockets 0777 root root
+    chmod 0777 /tmp/recovery
+    chmod 0777 /tmp/recovery/sockets
     wait /sys/class/net/wlan0 10
     start wpa_supplicant
     setprop sys.aera.wlan.up 0

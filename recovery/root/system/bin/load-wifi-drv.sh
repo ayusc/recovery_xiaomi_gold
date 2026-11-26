@@ -61,5 +61,6 @@ done
 
 insmod $moddir/wmt_chrdev_wifi.ko 2>/dev/null
 insmod $moddir/wlan_drv_gen4m_6833.ko 2>/dev/null
+echo 1 > /dev/wmtWifi 2>/dev/null
 
 exit 0
