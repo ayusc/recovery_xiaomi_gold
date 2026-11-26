@@ -79,6 +79,14 @@ echo 1 > /dev/wmtWifi
 # Wait for wlan0 netdevice to appear in sysfs (up to 5s)
 for i in $(seq 1 50); do
     if [ -d /sys/class/net/wlan0 ]; then
+        mkdir -p /tmp/recovery/sockets
+        if [ ! -f /tmp/recovery/wpa_supplicant.conf ]; then
+            printf 'ctrl_interface=/tmp/recovery/sockets\nupdate_config=1\npmf=1\nsae_pwe=2\n' > /tmp/recovery/wpa_supplicant.conf
+        fi
+        chown -R 1010:1010 /tmp/recovery 2>/dev/null
+        chmod 0775 /tmp/recovery 2>/dev/null
+        chmod 0775 /tmp/recovery/sockets 2>/dev/null
+        chmod 0660 /tmp/recovery/wpa_supplicant.conf 2>/dev/null
         setprop wifi.driver.ready true
         break
     fi

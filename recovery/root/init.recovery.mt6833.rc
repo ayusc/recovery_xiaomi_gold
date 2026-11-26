@@ -11,7 +11,7 @@ on init
     setprop sys.usb.controller musb-hdrc
     setprop vendor.usb.controller musb-hdrc
     setprop ro.recovery.usb.vid 18D1
-    setprop ro.recovery.usb.adb.pid 4E11
+    setprop ro.recovery.usb.adb.pid D001
     setprop ro.recovery.usb.fastboot.pid 4EE0
     setprop sys.usb.ffs.aio_compat 1
     export LD_LIBRARY_PATH /system/lib64:/vendor/lib64:/vendor/lib64/hw
@@ -25,6 +25,7 @@ on fs
     restorecon_recursive /mnt/vendor/persist
     mkdir /mnt/vendor/persist/data 0755 system system
     mount none /mnt/vendor/persist /persist bind
+    start load-usb-drv
     start adbd
 
 # We need vold early for metadata encryption
@@ -100,6 +101,13 @@ service load-wifi-drv /system/bin/sh /system/bin/load-wifi-drv.sh
     disabled
     seclabel u:r:recovery:s0
 
+service load-usb-drv /system/bin/sh /system/bin/load-usb-drv.sh
+    user root
+    group root
+    oneshot
+    disabled
+    seclabel u:r:recovery:s0
+
 service wmt_loader /vendor/bin/wmt_loader
     class early_hal
     user root
@@ -138,6 +146,7 @@ on property:wifi.driver.ready=true
     mkdir /tmp/recovery/sockets 0777 root root
     chmod 0777 /tmp/recovery
     chmod 0777 /tmp/recovery/sockets
+    chown 1010:1010 /tmp/recovery/sockets
 
 on property:sys.aera.wlan.up=1
     wait /dev/wmtWifi 2
@@ -146,13 +155,14 @@ on property:sys.aera.wlan.up=1
     mkdir /tmp/recovery/sockets 0777 root root
     chmod 0777 /tmp/recovery
     chmod 0777 /tmp/recovery/sockets
+    chown 1010:1010 /tmp/recovery/sockets
     wait /sys/class/net/wlan0 10
     start wpa_supplicant
     setprop sys.aera.wlan.up 0
 
 service wpa_supplicant /system/bin/wpa_supplicant -Dnl80211 -iwlan0 -c/vendor/etc/wifi/wpa_supplicant.conf -O/tmp/recovery/sockets -dd
     user root
-    group root wifi inet keystore
+    group root wifi inet keystore net_admin
     disabled
     seclabel u:r:recovery:s0
 
@@ -209,6 +219,7 @@ on boot
     start vendor.health-default
     start load-ts-drv
     start load-wifi-drv
+    start load-usb-drv
     start adbd
     setprop sys.usb.config none
     setprop sys.usb.config adb
