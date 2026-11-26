@@ -50,6 +50,8 @@ on post-fs
     # WiFi executables compatibility symlinks
     symlink /system/bin/wpa_supplicant /vendor/bin/hw/wpa_supplicant
     symlink /system/bin/wpa_cli /vendor/bin/wpa_cli
+    symlink /vendor/firmware /system/etc/firmware
+    symlink /vendor/firmware /etc/firmware
 
     start vendor.boot-default
 
@@ -118,7 +120,7 @@ on property:vendor.connsys.driver.ready=yes
 on property:sys.aera.wlan.up=1
     mkdir /tmp/recovery 0777 root root
     mkdir /tmp/recovery/sockets 0777 root root
-    wait /sys/class/net/wlan0 5
+    wait /sys/class/net/wlan0 10
     start wpa_supplicant
     setprop sys.aera.wlan.up 0
 
@@ -168,8 +170,17 @@ on boot
     chown system system /sys/devices/platform/11e01000.i2c/i2c-5/5-0034/mt6360-led.3.auto/leds/mt6360_flash_ch1/brightness
     chmod 0666 /sys/class/leds/mt6360_flash_ch1/brightness
     chown system system /sys/class/leds/mt6360_flash_ch1/brightness
+    chmod 0666 /sys/class/leds/mt6360_flash_ch2/brightness
+    chown system system /sys/class/leds/mt6360_flash_ch2/brightness
     chmod 0666 /dev/flashlight
     chown system camera /dev/flashlight
+    chmod 0666 /dev/stpwmt
+    chmod 0666 /dev/wmtdetect
+    chmod 0666 /dev/wmtWifi
+    chown system system /dev/stpwmt
+    chown system system /dev/wmtdetect
+    chown wifi wifi /dev/wmtWifi
+    setprop sys.usb.config adb
     start vendor.health-default
     start load-ts-drv
     start load-wifi-drv

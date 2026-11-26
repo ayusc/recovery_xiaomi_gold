@@ -99,3 +99,9 @@ subsystem vfio
 /sys/devices/system/cpu/cpu*   cpufreq/scaling_min_freq   0664  system system
 /sys/devices/virtual/misc/uhid/*/leds/* brightness   0664  system system
 /sys/devices/virtual/misc/uhid/*/leds/* multi_intensity   0664  system system
+
+# MediaTek Connectivity
+/dev/stpwmt               0666   system     system
+/dev/wmtdetect            0666   system     system
+/dev/wmtWifi              0666   wifi       wifi
+/dev/flashlight           0666   system     camera

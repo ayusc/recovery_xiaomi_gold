@@ -35,8 +35,8 @@
 /dev/block/by-name/otp       0660    root    system
 
 # Connectivity
-/dev/stpwmt               0660   system     system
-/dev/wmtdetect            0660   system     system
+/dev/stpwmt               0666   system     system
+/dev/wmtdetect            0666   system     system
 /dev/fw_log_wmt           0660   system     system
 /dev/conninfra_dev        0660   system     system
 
@@ -57,8 +57,11 @@
 /dev/stpant               0660   system     system
 
 # WIFI
-/dev/wmtWifi              0660   wifi     wifi
+/dev/wmtWifi              0666   wifi     wifi
 /dev/fw_log_wifi          0660   wifi     wifi
+
+# Flashlight
+/dev/flashlight           0666   system   camera
 
 # FMRadio
 /dev/fm                   0660   media     media

@@ -253,7 +253,9 @@ AERA_STATUS_INDENT_RIGHT := 60
 AERA_FLASHLIGHT_ENABLE := 1
 OF_FLASHLIGHT_ENABLE := 1
 AERA_FL_PATH1 := /sys/class/leds/mt6360_flash_ch1
+AERA_FL_PATH2 := /sys/class/leds/mt6360_flash_ch2
 OF_FL_PATH1 := /sys/class/leds/mt6360_flash_ch1
+OF_FL_PATH2 := /sys/class/leds/mt6360_flash_ch2
 
 # Wi-Fi
 OF_ENABLE_WLAN := 1

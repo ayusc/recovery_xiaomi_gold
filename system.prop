@@ -4,6 +4,9 @@ ro.vendor.mtk_microtrust_tee_support=1
 
 # USB & ADB
 ro.adb.secure=0
+ro.secure=0
+ro.debuggable=1
+persist.sys.usb.config=adb
 sys.usb.controller=musb-hdrc
 vendor.usb.controller=musb-hdrc
 
@@ -12,4 +15,9 @@ ro.vendor.touchfeature.type=2
 ro.vendor.idle_fps=60
 ro.vendor.display.aod_monitor_default_fps=60
 ro.vendor.display.is_standard_mode=true
+
+# Wi-Fi
 ro.hardware.wlan.dbs=0
+ro.vendor.wlan.gen=gen4m_6833
+ro.vendor.wlan.chrdev=wmt_chrdev_wifi
+ro.vendor.wlan.standalone.log=y
