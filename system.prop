@@ -4,14 +4,8 @@ ro.vendor.mtk_microtrust_tee_support=1
 
 # USB & ADB
 ro.adb.secure=0
-ro.secure=0
-ro.debuggable=1
-persist.sys.usb.config=adb
 sys.usb.controller=musb-hdrc
 vendor.usb.controller=musb-hdrc
-ro.recovery.usb.vid=18D1
-ro.recovery.usb.adb.pid=D001
-ro.recovery.usb.fastboot.pid=4EE0
 
 # Display / Touch
 ro.vendor.touchfeature.type=2

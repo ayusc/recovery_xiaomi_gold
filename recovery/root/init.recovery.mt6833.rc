@@ -7,12 +7,8 @@ on early-init
     write /sys/fs/selinux/enforce 0
 
 on init
-    setprop sys.usb.configfs 1
     setprop sys.usb.controller musb-hdrc
     setprop vendor.usb.controller musb-hdrc
-    setprop ro.recovery.usb.vid 18D1
-    setprop ro.recovery.usb.adb.pid D001
-    setprop ro.recovery.usb.fastboot.pid 4EE0
     setprop sys.usb.ffs.aio_compat 1
     export LD_LIBRARY_PATH /system/lib64:/vendor/lib64:/vendor/lib64/hw
     setprop crypto.ready 1
@@ -25,8 +21,6 @@ on fs
     restorecon_recursive /mnt/vendor/persist
     mkdir /mnt/vendor/persist/data 0755 system system
     mount none /mnt/vendor/persist /persist bind
-    start load-usb-drv
-    start adbd
 
 # We need vold early for metadata encryption
 on early-fs
@@ -60,7 +54,6 @@ on post-fs
     symlink /vendor/firmware /etc/firmware
 
     start vendor.boot-default
-    start adbd
 
 on post-fs-data
     # Wi-Fi directory setup
@@ -95,13 +88,6 @@ service load-ts-drv /system/bin/sh /system/bin/load-ts-drv.sh
     seclabel u:r:recovery:s0
 
 service load-wifi-drv /system/bin/sh /system/bin/load-wifi-drv.sh
-    user root
-    group root
-    oneshot
-    disabled
-    seclabel u:r:recovery:s0
-
-service load-usb-drv /system/bin/sh /system/bin/load-usb-drv.sh
     user root
     group root
     oneshot
@@ -219,7 +205,3 @@ on boot
     start vendor.health-default
     start load-ts-drv
     start load-wifi-drv
-    start load-usb-drv
-    start adbd
-    setprop sys.usb.config none
-    setprop sys.usb.config adb
