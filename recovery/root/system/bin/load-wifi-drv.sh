@@ -61,6 +61,28 @@ done
 
 insmod $moddir/wmt_chrdev_wifi.ko 2>/dev/null
 insmod $moddir/wlan_drv_gen4m_6833.ko 2>/dev/null
-echo 1 > /dev/wmtWifi 2>/dev/null
+
+# Wait for /dev/wmtWifi char device node to appear (up to 5s)
+for i in $(seq 1 50); do
+    if [ -c /dev/wmtWifi ]; then
+        break
+    fi
+    sleep 0.1
+done
+
+chmod 0666 /dev/wmtWifi 2>/dev/null
+chown wifi wifi /dev/wmtWifi 2>/dev/null
+
+# Turn Wi-Fi subsystem power ON via WMT
+echo 1 > /dev/wmtWifi
+
+# Wait for wlan0 netdevice to appear in sysfs (up to 5s)
+for i in $(seq 1 50); do
+    if [ -d /sys/class/net/wlan0 ]; then
+        setprop wifi.driver.ready true
+        break
+    fi
+    sleep 0.1
+done
 
 exit 0

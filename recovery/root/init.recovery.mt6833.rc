@@ -7,8 +7,12 @@ on early-init
     write /sys/fs/selinux/enforce 0
 
 on init
+    setprop sys.usb.configfs 1
     setprop sys.usb.controller musb-hdrc
     setprop vendor.usb.controller musb-hdrc
+    setprop ro.recovery.usb.vid 18D1
+    setprop ro.recovery.usb.adb.pid 4E11
+    setprop ro.recovery.usb.fastboot.pid 4EE0
     setprop sys.usb.ffs.aio_compat 1
     export LD_LIBRARY_PATH /system/lib64:/vendor/lib64:/vendor/lib64/hw
     setprop crypto.ready 1
@@ -21,7 +25,8 @@ on fs
     restorecon_recursive /mnt/vendor/persist
     mkdir /mnt/vendor/persist/data 0755 system system
     mount none /mnt/vendor/persist /persist bind
- 
+    start adbd
+
 # We need vold early for metadata encryption
 on early-fs
     start vold
@@ -54,6 +59,7 @@ on post-fs
     symlink /vendor/firmware /etc/firmware
 
     start vendor.boot-default
+    start adbd
 
 on post-fs-data
     # Wi-Fi directory setup
@@ -116,9 +122,25 @@ on property:vendor.wmt.driver.loaded=1
 on property:vendor.connsys.driver.ready=yes
     insmod /lib/modules/wmt_chrdev_wifi.ko
     insmod /lib/modules/wlan_drv_gen4m_6833.ko
+    wait /dev/wmtWifi 2
     write /dev/wmtWifi "1"
+    start aera-wlan-ready
+
+service aera-wlan-ready /system/bin/sh -c "until test -e /sys/class/net/wlan0; do sleep 1; done; setprop wifi.driver.ready true"
+    disabled
+    oneshot
+    user root
+    group root
+    seclabel u:r:recovery:s0
+
+on property:wifi.driver.ready=true
+    mkdir /tmp/recovery 0777 root root
+    mkdir /tmp/recovery/sockets 0777 root root
+    chmod 0777 /tmp/recovery
+    chmod 0777 /tmp/recovery/sockets
 
 on property:sys.aera.wlan.up=1
+    wait /dev/wmtWifi 2
     write /dev/wmtWifi "1"
     mkdir /tmp/recovery 0777 root root
     mkdir /tmp/recovery/sockets 0777 root root
@@ -184,7 +206,9 @@ on boot
     chown system system /dev/stpwmt
     chown system system /dev/wmtdetect
     chown wifi wifi /dev/wmtWifi
-    setprop sys.usb.config adb
     start vendor.health-default
     start load-ts-drv
     start load-wifi-drv
+    start adbd
+    setprop sys.usb.config none
+    setprop sys.usb.config adb
